@@ -256,7 +256,7 @@ const CITY = {
     {isl:'lujiazui', id:'swfc', n:'环球金融中心', ix:8.4, iy:1.4, style:'swfc', sign:['SWFC']},
     {isl:'lujiazui', id:'jinmao', n:'金茂大厦', ix:12.0, iy:1.8, style:'jinmao', sign:['JIN MAO']},
     {isl:'lujiazui', id:'broker', n:'中银河证券', ix:12.8, iy:4.6, style:'tower', h:76, c:'#c98a5a',
-     sign:['中银河证券'], label:'券商楼 · 集合出差调研', use:()=> startFieldTrip && startFieldTrip()},
+     sign:['中银河·研报库'], label:'券商大楼 · 研报库 / 组团调研', use:()=> openBrokerTower()},
     {isl:'lujiazui', id:'rest', n:'聚贤楼', ix:1.6, iy:8.8, style:'shop', c:'#b5495b', sign:['聚贤楼'],
      label:'聚贤楼饭店 · 进去看看', use:()=> visitVenue('rest')},
     {isl:'lujiazui', id:'tea', n:'拾露茶室', ix:4.4, iy:8.8, style:'shop', c:'#4f8a72', sign:['拾露茶室'],
@@ -274,6 +274,8 @@ const CITY = {
     {isl:'wallst', id:'beacon', n:'灯塔资产', ix:7.6, iy:4.6, style:'tower', h:170, c:'#8ab0c9', sign:['BEACON'],
      label:'灯塔资产 · 派研究员调研', use:()=> dispatchAbroad('灯塔资产')},
     {isl:'wallst', id:'fed', n:'联储金库', ix:2.0, iy:5.0, style:'tower', h:60, c:'#b0a898', sign:['FED VAULT']},
+    {isl:'wallst', id:'mediahub', n:'环球媒体大厦', ix:5.0, iy:5.2, style:'tower', h:118, c:'#c98a5a',
+     sign:['环球媒体·新闻库'], label:'媒体大楼 · 新闻公告库', use:()=> openBuildingBrowser('media')},
     /* —— 中环 —— */
     {isl:'central', id:'ifc', n:'IFC', ix:1.6, iy:2.0, style:'ifc', sign:['IFC 国金'],
      label:'鲸吞资本 · 派研究员调研', use:()=> dispatchAbroad('鲸吞资本')},
@@ -419,6 +421,16 @@ function cityRoom(){
         const proxy = Object.assign({}, b2, {ix: px, iy: py});
         const box = ISO_STYLES[b2.style](ctx, proxy);
         if(b2.sign) isoSign(ctx, box, b2.sign[0], b2.sign[1], b2.sign[2]);
+        /* 资料库建筑挂金牌 */
+        if(['campus', 'broker', 'mediahub'].includes(b2.id)){
+          const cx2 = (box.At[0] + box.Ct[0]) / 2;
+          const cy2 = Math.min(box.At[1], box.Bt[1], box.Ct[1], box.Dt[1]);
+          ctx.fillStyle = W_PAL.ink; ctx.fillRect(cx2 - 40, cy2 - 48, 80, 18);
+          ctx.fillStyle = '#e9b23c'; ctx.fillRect(cx2 - 37, cy2 - 45, 74, 12);
+          ctx.fillStyle = W_PAL.ink; ctx.font = 'bold 11px monospace';
+          ctx.textAlign = 'center'; ctx.fillText('📚 资 料 库', cx2, cy2 - 36);
+          ctx.textAlign = 'left';
+        }
       });
     }
   });

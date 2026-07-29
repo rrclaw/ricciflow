@@ -94,18 +94,29 @@ async function openBuildingBrowser(b){
     openModal(`
       <div class="win-bar" style="background:var(--coral)"><span>${B.n} · 保安亭</span>
         <span class="dots" id="mClose" style="cursor:pointer">_ □ ×</span></div>
-      <div style="padding:13px">
-        <div class="row" style="margin-bottom:9px">${avatarHTML('risk','s4')}
-          <div class="saybox" style="flex:1">「先生您好，资料库需要<b>里奇流老板本人的钥匙</b>。
-          没有的话，可以留个申请，或者报名下一场公开调研。」</div></div>
+      <div class="guard-scene">
+        <div class="guard-bars"></div>
+        <div class="guard-stripe"></div>
+        <div class="guard-stamp">禁止入内</div>
+        <div class="guard-figure">
+          ${avatarHTML('risk','s6')}
+          <div class="guard-say">「站住。资料库是<b>机密重地</b>，
+            要<b>里奇流老板本人的钥匙</b>。<br>没有？可以留申请，或报名下一场公开调研。」</div>
+        </div>
+        <div style="margin-top:4px">${avatarHTML('guest','s3')}
+          <span class="t-xs" style="color:#9b93a8;font-weight:700">← 你（此刻的客人身份）</span></div>
+        <div class="guard-stripe" style="margin-top:10px"></div>
+      </div>
+      <div style="padding:12px">
         <div class="row" style="gap:6px">
-          <button class="px-btn on" id="grdKey">我有钥匙（开保险库）</button>
+          <button class="px-btn on dotted" id="grdKey" style="flex:1">🔑 我有钥匙（开保险库）</button>
           <button class="px-btn" id="grdApply">提交查阅申请</button>
           <button class="px-btn ghost" id="grdTour">报名未来调研</button>
         </div>
-        <div class="t-xs t-dim" style="font-weight:700;margin-top:9px">
-          客人可参观：研究员名册 · 数据源清单 · 财务概况（演示值）。资料原文属于公司机密。</div>
+        <div class="t-xs t-dim" style="font-weight:700;margin-top:8px">
+          客人可参观：研究员名册 · 数据源清单 · 财务概况（演示值）。原文属公司机密。</div>
       </div>`);
+    toast('哔——保安拦住了你');
     $('#mClose').onclick = closeModal;
     $('#grdKey').onclick = ()=>{ closeModal(); openVault(()=> openBuildingBrowser(b)); };
     $('#grdApply').onclick = ()=>{ closeModal(); toast('申请已登记。老板看到会批（也可能不批）'); };

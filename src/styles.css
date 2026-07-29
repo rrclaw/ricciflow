@@ -564,3 +564,25 @@ body{
 .vault-key{height:44px;background:var(--cream2);box-shadow:inset 0 0 0 3px var(--ink);
   font-size:16px;font-weight:700;cursor:pointer}
 .vault-key:hover{background:var(--mustard)}
+
+/* ==========================================================================
+   保安拦截大场面
+   ========================================================================== */
+.guard-scene{background:#1a1420;box-shadow:inset 0 0 0 3px var(--ink);
+  padding:18px 12px 14px;text-align:center;position:relative;overflow:hidden;
+  animation:guardShake .4s steps(5)}
+@keyframes guardShake{0%{transform:translate(0)}25%{transform:translate(-6px,2px)}
+  50%{transform:translate(5px,-2px)}75%{transform:translate(-3px,1px)}100%{transform:translate(0)}}
+.guard-bars{position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(90deg,transparent 0 46px,rgba(233,178,60,.16) 46px 58px)}
+.guard-stripe{height:14px;margin:0 -12px;
+  background:repeating-linear-gradient(45deg,#e9b23c 0 16px,#3f2b23 16px 32px)}
+.guard-stamp{display:inline-block;margin:10px 0 6px;padding:6px 18px;
+  border:4px solid var(--coral);color:var(--coral);font-size:22px;font-weight:700;
+  letter-spacing:.3em;transform:rotate(-6deg);
+  animation:stampIn .35s steps(3) both}
+@keyframes stampIn{0%{transform:rotate(-6deg) scale(2.6);opacity:0}
+  100%{transform:rotate(-6deg) scale(1);opacity:1}}
+.guard-figure{display:flex;justify-content:center;align-items:flex-end;gap:22px;margin:8px 0 4px}
+.guard-say{background:#fff8e8;box-shadow:inset 0 0 0 3px var(--ink);color:var(--ink);
+  padding:8px 10px;font-size:12px;font-weight:700;line-height:1.7;max-width:300px;text-align:left}
