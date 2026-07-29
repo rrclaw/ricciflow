@@ -251,6 +251,12 @@ function furnitureAtPoint(px, py){
     px >= f.tx*TILE && px < (f.tx + (f.tw||1))*TILE &&
     py >= f.ty*TILE && py < (f.ty + (f.th||1))*TILE && f.label);
 }
+function adjToFurn(f){
+  const bx = WALK.x / TILE, by = WALK.y / TILE;
+  const x0 = f.tx - 1.4, x1 = f.tx + (f.tw||1) + 0.4;
+  const y0 = f.ty - 1.4, y1 = f.ty + (f.th||1) + 0.6;
+  return bx >= x0 && bx <= x1 && by >= y0 && by <= y1;
+}
 function triggerFurniture(f){
   if(f.onUse) f.onUse(f);
   else if(f.comp) openComponent(f.comp);
@@ -276,23 +282,24 @@ function loop(){
     if(K['s'] || K['arrowdown'])  mvy += SPEED;
     if(!mvx && !mvy && WALK.target){
       /* 目标是家具：走到附近直接触发（不必抵达点击点） */
-      if(WALK.target.furn){
-        const c = fCenter(WALK.target.furn);
-        if(dist(WALK.x, WALK.y, c.x, c.y) < TILE * 3.6){
-          const f = WALK.target.furn; WALK.target = null; WALK.path = null;
-          triggerFurniture(f);
-        }
+      if(WALK.target.furn && adjToFurn(WALK.target.furn)){
+        const f = WALK.target.furn; WALK.target = null; WALK.path = null;
+        triggerFurniture(f);
       }
       if(WALK.target && WALK.path && WALK.path.length){
-        /* 沿 BFS 路径逐格走 */
+        /* 轨道行走：BFS 每格已保证可走，直接插值，绕过碰撞盒（蹭墙卡死一类 bug 根除） */
         const [wtx, wty] = WALK.path[0];
         const wx = wtx * TILE + TILE/2, wy = wty * TILE + TILE/2;
         const dx = wx - WALK.x, dy = wy - WALK.y;
-        if(Math.abs(dx) <= 3 && Math.abs(dy) <= 3) WALK.path.shift();
+        if(Math.abs(dx) <= 3 && Math.abs(dy) <= 3){ WALK.path.shift(); }
         else {
-          if(Math.abs(dx) > 3) mvx = Math.sign(dx) * SPEED;
-          if(Math.abs(dy) > 3) mvy = Math.sign(dy) * SPEED;
-          if(mvx && mvy){ mvx *= .72; mvy *= .72; }
+          const stepx = clamp(dx, -SPEED, SPEED), stepy = clamp(dy, -SPEED, SPEED);
+          WALK.x += stepx; WALK.y += stepy;
+          WALK.dir = Math.abs(stepx) >= Math.abs(stepy)
+            ? (stepx < 0 ? 'left' : 'right') : (stepy < 0 ? 'up' : 'down');
+          WALK.animT += 1;
+          if(WALK.animT % 9 === 0) WALK.frame = 1 - WALK.frame;
+          WALK._rail = true;
         }
       } else if(WALK.target){
         /* 路径走完：最后一小段直线逼近或收尾 */
@@ -307,6 +314,7 @@ function loop(){
       }
     }
   }
+  WALK._rail = false;
   if(mvx || mvy){
     const ox = WALK.x, oy = WALK.y;
     tryMove(mvx, 0); tryMove(0, mvy);
@@ -327,6 +335,16 @@ function loop(){
     WALK.animT += 1;
     if(WALK.animT % 9 === 0) WALK.frame = 1 - WALK.frame;
   } else WALK.frame = 0;
+
+  /* 相机跟随：老板在动且没在手动拖拽时，镜头缓动到人 */
+  if((mvx || mvy || WALK._rail) && !DRAG.on){
+    const s2 = CAM.fit * CAM.zoom;
+    const tx2 = innerWidth / 2 - WALK.x * s2;
+    const ty2 = innerHeight / 2 - WALK.y * s2;
+    CAM.px += (tx2 - CAM.px) * .06;
+    CAM.py += (ty2 - CAM.py) * .06;
+    clampCam();
+  }
 
   let near = null, bestD = TILE * 2.4;
   (WALK.room.furniture || []).forEach(f=>{

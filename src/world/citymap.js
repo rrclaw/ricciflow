@@ -218,10 +218,30 @@ function paintFerry(ctx, ix, iy){
 /* 直升机坪（岛间跳转热点） */
 function paintHelipad(ctx, ix, iy){
   const p = isoPt(ix, iy);
-  poly(ctx, [isoPt(ix - .9, iy), isoPt(ix, iy - .45), isoPt(ix + .9, iy), isoPt(ix, iy + .45)],
+  poly(ctx, [isoPt(ix - 1.1, iy), isoPt(ix, iy - .55), isoPt(ix + 1.1, iy), isoPt(ix, iy + .55)],
     '#6b7d8a', W_PAL.ink);
   ctx.fillStyle = '#f4efe4'; ctx.font = 'bold 14px monospace';
-  ctx.textAlign = 'center'; ctx.fillText('H', p[0], p[1] + 5); ctx.textAlign = 'left';
+  ctx.textAlign = 'center'; ctx.fillText('H', p[0], p[1] + 8); ctx.textAlign = 'left';
+  /* 停一架像素直升机 */
+  const hx = p[0] - 2, hy = p[1] - 20;
+  ctx.fillStyle = 'rgba(30,20,10,.25)'; ctx.fillRect(hx - 16, hy + 16, 36, 5);
+  ctx.fillStyle = '#e8535a'; ctx.fillRect(hx - 12, hy, 26, 12);          /* 机身 */
+  ctx.strokeStyle = W_PAL.ink; ctx.lineWidth = 2; ctx.strokeRect(hx - 12, hy, 26, 12);
+  ctx.fillStyle = '#a8d4e4'; ctx.fillRect(hx + 6, hy + 2, 7, 6);         /* 舷窗 */
+  ctx.strokeRect(hx + 6, hy + 2, 7, 6);
+  ctx.fillStyle = '#e8535a'; ctx.fillRect(hx - 24, hy + 3, 12, 4);       /* 尾梁 */
+  ctx.strokeRect(hx - 24, hy + 3, 12, 4);
+  ctx.fillStyle = W_PAL.ink;
+  ctx.fillRect(hx - 27, hy - 3, 4, 10);                                  /* 尾桨 */
+  ctx.fillRect(hx - 1, hy - 6, 4, 6);                                    /* 主轴 */
+  ctx.fillRect(hx - 18, hy - 8, 38, 3);                                  /* 主旋翼 */
+  ctx.fillRect(hx - 10, hy + 12, 22, 3);                                 /* 起落橇 */
+  /* 立牌 */
+  ctx.fillStyle = W_PAL.ink; ctx.fillRect(p[0] + 28, hy - 4, 4, 34);
+  ctx.fillRect(p[0] + 18, hy - 18, 66, 17);
+  ctx.fillStyle = '#e9b23c'; ctx.fillRect(p[0] + 20, hy - 16, 62, 13);
+  ctx.fillStyle = W_PAL.ink; ctx.font = 'bold 10px monospace';
+  ctx.fillText('✈ 直升机坪', p[0] + 23, hy - 6);
 }
 
 /* ---------- 城市布局（iso cell 坐标） ---------- */
@@ -243,7 +263,7 @@ const CITY = {
   islands: [
     {id:'lujiazui', n:'陆 家 嘴', w:16, d:12, ground:'#a9c48a',
      water:'黄 浦 江', waterSide:'e'},
-    {id:'wallst', n:'华 尔 街', w:10, d:8, ground:'#b3b3a0',
+    {id:'wallst', n:'华 尔 街', w:12, d:9, ground:'#b3b3a0',
      water:'哈 德 逊 河', waterSide:'e'},
     {id:'central', n:'香 港 中 环', w:11, d:8, ground:'#a0bd94',
      water:'维 多 利 亚 港', waterSide:'n'}
@@ -268,13 +288,13 @@ const CITY = {
     {isl:'lujiazui', id:'campus', n:'X 公司产业园', ix:13.0, iy:8.6, style:'campus', sign:['X 公司产业园'],
      label:'X公司园区 · 纪要资料库', use:()=> openBuildingBrowser('campus')},
     /* —— 华尔街 —— */
-    {isl:'wallst', id:'nyse', n:'NYSE', ix:1.2, iy:1.6, style:'nyse', sign:['NYSE']},
-    {isl:'wallst', id:'tiger', n:'猛虎基金', ix:5.4, iy:1.2, style:'tower', h:150, c:'#d08a3e', sign:['TIGER FUND'],
+    {isl:'wallst', id:'nyse', n:'NYSE', ix:1.2, iy:1.4, style:'nyse', sign:['NYSE']},
+    {isl:'wallst', id:'tiger', n:'猛虎基金', ix:6.0, iy:1.2, style:'tower', h:150, c:'#d08a3e', sign:['TIGER FUND'],
      label:'猛虎基金 · 派研究员调研', use:()=> dispatchAbroad('猛虎基金')},
-    {isl:'wallst', id:'beacon', n:'灯塔资产', ix:7.6, iy:4.6, style:'tower', h:170, c:'#8ab0c9', sign:['BEACON'],
+    {isl:'wallst', id:'beacon', n:'灯塔资产', ix:9.0, iy:5.8, style:'tower', h:170, c:'#8ab0c9', sign:['BEACON'],
      label:'灯塔资产 · 派研究员调研', use:()=> dispatchAbroad('灯塔资产')},
-    {isl:'wallst', id:'fed', n:'联储金库', ix:2.0, iy:5.0, style:'tower', h:60, c:'#b0a898', sign:['FED VAULT']},
-    {isl:'wallst', id:'mediahub', n:'环球媒体大厦', ix:5.0, iy:5.2, style:'tower', h:118, c:'#c98a5a',
+    {isl:'wallst', id:'fed', n:'联储金库', ix:1.4, iy:6.2, style:'tower', h:60, c:'#b0a898', sign:['FED VAULT']},
+    {isl:'wallst', id:'mediahub', n:'环球媒体大厦', ix:5.2, iy:6.0, style:'tower', h:118, c:'#c98a5a',
      sign:['环球媒体·新闻库'], label:'媒体大楼 · 新闻公告库', use:()=> openBuildingBrowser('media')},
     /* —— 中环 —— */
     {isl:'central', id:'ifc', n:'IFC', ix:1.6, iy:2.0, style:'ifc', sign:['IFC 国金'],
@@ -287,7 +307,7 @@ const CITY = {
   /* 岛间跳转直升机坪 */
   pads: [
     {isl:'lujiazui', ix:14.9, iy:7.0},
-    {isl:'wallst',  ix:5.2, iy:6.4},
+    {isl:'wallst',  ix:10.4, iy:2.2},
     {isl:'central', ix:9.4, iy:6.2}
   ],
   cars: [
@@ -413,7 +433,7 @@ function cityRoom(){
       CITY.trees.forEach(([isl, ix, iy])=>{ const I = islById(isl); paintIsoTree(ctx, I.ox + ix, I.oy + iy); });
       CITY.cars.forEach(c=>{ const I = islById(c.isl); paintIsoCar(ctx, I.ox + c.ix, I.oy + c.iy, c.c); });
       CITY.pads.forEach(p=>{ const I = islById(p.isl); paintHelipad(ctx, I.ox + p.ix, I.oy + p.iy); });
-      paintBull(ctx, islById('wallst').ox + 3.6, islById('wallst').oy + 3.4);
+      paintBull(ctx, islById('wallst').ox + 4.0, islById('wallst').oy + 4.0);
       /* 楼（全局按 iy 排序） */
       const sorted = [...CITY.buildings].sort((a, b2)=> (gxy(a)[0] + gxy(a)[1]) - (gxy(b2)[0] + gxy(b2)[1]));
       sorted.forEach(b2=>{
@@ -448,22 +468,65 @@ function cityRoom(){
         ix >= I.ox + .3 && ix <= I.ox + I.w - .3 && iy >= I.oy + .3 && iy <= I.oy + I.d - .3);
       room.solid[ty][tx] = !onLand;
     }
-  /* 楼体碰撞 + 热点 */
+  /* 楼体碰撞：只封 iso 足迹菱形内部（不含楼高投影，塔越高也不切碎地面）。
+     热点门牌单独放在楼正前方一格空地，走过去就能触发。 */
+  const openAt = (tx, ty)=> ty>=0 && tx>=0 && ty<GH && tx<GW && !room.solid[ty][tx];
+  const nearestOpen = (tx, ty)=>{
+    for(let r=0;r<10;r++) for(let dy=-r;dy<=r;dy++) for(let dx=-r;dx<=r;dx++)
+      if(openAt(tx+dx, ty+dy)) return [tx+dx, ty+dy];
+    return [tx, ty];
+  };
+  const findPath = (sx, sy, tx, ty)=>{
+    if(!openAt(tx,ty)){ const n=nearestOpen(tx,ty); tx=n[0]; ty=n[1]; }
+    if(!openAt(sx,sy)) return null;
+    const key=(x,y)=>y*GW+x, prev=new Map([[key(sx,sy),1]]), q=[[sx,sy]];
+    while(q.length){ const [cx,cy]=q.shift();
+      if(cx===tx&&cy===ty) return true;
+      for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+        const nx=cx+dx, ny=cy+dy;
+        if(openAt(nx,ny) && !prev.has(key(nx,ny))){ prev.set(key(nx,ny),1); q.push([nx,ny]); }
+      }}
+    return null;
+  };
+  const pointInFootprint = (px, py, bx, by, w, d)=>{
+    /* 屏幕点 → iso cell 坐标，判断是否落在 [bx,bx+w]×[by,by+d] */
+    const ix = ((px - ISO.ORX) / (ISO.TW/2) + (py - ISO.ORY) / (ISO.TH/2)) / 2;
+    const iy = ((py - ISO.ORY) / (ISO.TH/2) - (px - ISO.ORX) / (ISO.TW/2)) / 2;
+    return ix >= bx && ix <= bx + w && iy >= by && iy <= by + d;
+  };
+  const dims = b=>({w:{nyse:3, campus:3, shop:1.4, pearl:2}[b.style] || 2.2,
+                    d:{shop:1.4, pearl:2}[b.style] || 2});
+  /* 第一遍：全部楼足迹标实心 */
   CITY.buildings.forEach(b=>{
-    const [bx, by] = gxy(b);
-    const w = {nyse:3, campus:3, shop:1.4, pearl:2}[b.style] || 2.2;
-    const d = {shop:1.4, pearl:2}[b.style] || 2;
-    const corners = [isoPt(bx, by), isoPt(bx + w, by), isoPt(bx + w, by + d), isoPt(bx, by + d)];
-    const xs = corners.map(p=>p[0]), ys = corners.map(p=>p[1]);
-    const tx0 = Math.max(0, Math.floor(Math.min(...xs) / TILE)), tx1 = Math.min(GW - 1, Math.ceil(Math.max(...xs) / TILE));
-    const ty0 = Math.max(0, Math.floor(Math.min(...ys) / TILE)), ty1 = Math.min(GH - 1, Math.ceil(Math.max(...ys) / TILE));
-    for(let y = ty0; y <= ty1 - 1; y++)
-      for(let x = tx0 + 1; x <= tx1 - 1; x++)   /* 瘦身：留出楼间走廊 */
-        room.solid[y][x] = true;
-    if(b.label){
-      room.furniture.push({id:b.id, tx:tx0, ty:ty0, tw:tx1 - tx0 + 1, th:ty1 - ty0 + 1,
-        solid:false, label:b.label, onUse: b.use || (()=> toast(b.n + '：今天不接待'))});
+    const [bx, by] = gxy(b); const {w, d} = dims(b);
+    for(let ty = 0; ty < GH; ty++)
+      for(let tx = 0; tx < GW; tx++)
+        if(pointInFootprint(tx*TILE + 16, ty*TILE + 16, bx, by, w, d))
+          room.solid[ty][tx] = true;
+  });
+  /* 第二遍：碰撞定型后再放门牌，保证每个门牌落在可站且可达 */
+  CITY.buildings.forEach(b=>{
+    if(!b.label) return;
+    const [bx, by] = gxy(b); const {w, d} = dims(b);
+    /* 门牌候选：楼四周由近及远找一个「可站 + BFS 从岛内可达」的格 */
+  // 注：此处 findPath/nearestOpen 需 room 已就绪
+    const spawnI = islById(b.isl);
+    const homeS = isoPt(spawnI.ox + spawnI.w*.5, spawnI.oy + spawnI.d*.68);
+    const homeTx = Math.floor(homeS[0]/TILE), homeTy = Math.floor(homeS[1]/TILE);
+    const cands = [
+      isoPt(bx + w/2, by + d + 0.6), isoPt(bx + w + 0.6, by + d/2),
+      isoPt(bx - 0.6, by + d/2), isoPt(bx + w/2, by - 0.6),
+      isoPt(bx + w + 0.8, by + d + 0.8), isoPt(bx - 0.8, by + d + 0.8)
+    ];
+    let placed = null;
+    for(const c of cands){
+      let tx = Math.floor(c[0]/TILE), ty = Math.floor(c[1]/TILE);
+      if(!(room.solid[ty] && !room.solid[ty][tx])){ const n = nearestOpen(tx, ty); tx = n[0]; ty = n[1]; }
+      if(room.solid[ty] && !room.solid[ty][tx] && findPath(homeTx, homeTy, tx, ty)){ placed = [tx, ty]; break; }
     }
+    if(!placed){ const n = nearestOpen(homeTx, homeTy); placed = n; }
+    room.furniture.push({id:b.id, tx:placed[0], ty:placed[1], tw:2, th:1,
+      solid:false, label:b.label, onUse: b.use || (()=> toast(b.n + '：今天不接待'))});
   });
   /* 直升机坪热点：岛间跳转 */
   CITY.pads.forEach(p=>{
