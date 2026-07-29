@@ -139,6 +139,16 @@ function renderRoomBase(room, hour, frame){
   if(room.paintBase) room.paintBase(ctx, hour, frame);
   (room.furniture || []).forEach(f=>{
     if(f.paint) f.paint(ctx, f.tx*TILE, f.ty*TILE, hour, frame);
+    /* 装修模式：停用组件的家具打灰包裹 */
+    if(f.comp && typeof compById === 'function'){
+      const c = compById(f.comp);
+      if(c && !c.enabled){
+        ctx.fillStyle = 'rgba(120,110,100,.72)';
+        ctx.fillRect(f.tx*TILE - 2, f.ty*TILE - 12, (f.tw||1)*TILE + 4, (f.th||1)*TILE + 14);
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 9px monospace';
+        ctx.fillText('已停用', f.tx*TILE + 4, f.ty*TILE + 8);
+      }
+    }
   });
   const g = ctx.createRadialGradient(room.W/2, room.H/2, room.H*.25, room.W/2, room.H/2, room.H*.95);
   g.addColorStop(0, W_PAL.glow || 'rgba(255,205,130,.10)');

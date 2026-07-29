@@ -22,7 +22,11 @@ RENDER.sys = function(){
       <h1>SETTINGS</h1>
       <span class="sub">系统 · 能关的和不能关的</span>
     </div>
-    <div class="grid" style="grid-template-columns:1fr 1fr">
+    <div class="grid" style="grid-template-columns:1fr 1fr 1fr">
+      <div class="col">
+        ${win('LLM 接入 · 自带钥匙', llmConfigHTML(), {color:'teal', sub:'key 只存本机'})}
+        ${win('通知渠道', notifyConfigHTML(), {color:'sky', sub:'重要事件推到真实世界'})}
+      </div>
       ${win('纪律红线 · 只读', REDLINES.map(r=>`
         <div class="redline">
           <div class="txt">${r.k}<small>${r.d}</small></div>
@@ -53,9 +57,33 @@ RENDER.sys = function(){
       </div>
     </div>`;
   $('#btnReset').onclick = ()=>{
+    localStorage.removeItem('rf_llm'); localStorage.removeItem('rf_llm_live');
+    localStorage.removeItem('rf_notify'); localStorage.removeItem('rf_theme');
     location.reload();
   };
+  bindLLMConfig(scr);
+  bindNotifyConfig(scr);
+  drawDecorList();
 };
+
+/* 装修模式：组件启停联动（家具变灰 + HUD 图标隐藏） */
+function drawDecorList(){
+  const box = $('#decorList'); if(!box) return;
+  box.innerHTML = COMPONENTS.map(c=>`
+    <div class="redline">
+      <div class="txt">${c.icon} ${c.n}<small>家具：${c.furn || '—'}</small></div>
+      <button class="px-btn sm ${c.enabled?'on':''}" data-decor="${c.id}">${c.enabled?'启用中':'已停用'}</button>
+    </div>`).join('');
+  $$('[data-decor]').forEach(b=> b.onclick = ()=>{
+    const c = compById(b.dataset.decor);
+    if(c.id === 'settings'){ toast('系统组件不能拆，不然你怎么把它开回来'); return; }
+    c.enabled = !c.enabled;
+    drawHUD(); drawDecorList();
+    if(typeof WALK !== 'undefined' && WALK.room && GAME.location === 'office')
+      WALK.base = renderRoomBase(WALK.room, WALK.hour, WALK.plantFrame);
+    toast(c.enabled ? `已启用「${c.n}」，家具归位` : `已停用「${c.n}」，家具打包变灰`);
+  });
+}
 
 /* @@APPEND@@ */
 
