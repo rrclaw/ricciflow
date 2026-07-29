@@ -93,17 +93,17 @@ RENDER.research = function(){
       <h1>研究台 · THE DESK OF THE BOSS</h1>
       <span class="sub">灵感 ▸ 初筛 ▸ 快研 ▸ 深研 ▸ 决策 ▸ 跟踪 —— 你只出题和拍板，中间是 AI 员工的事</span>
     </div>
-    <div style="display:grid;grid-template-columns:300px 1fr;gap:12px;align-items:start">
-      <div class="col">
-        ${win('灵感流', '<div id="ideaFeed" style="max-height:46vh;overflow-y:auto"></div>', {color:'mustard', sub:'今天世界在聊什么'})}
-        ${win('投稿箱', `
+    <div style="display:grid;grid-template-columns:290px minmax(0,1fr) 280px;gap:12px;align-items:start">
+      ${win('灵感流', '<div id="ideaFeed" style="max-height:74vh;overflow-y:auto"></div>', {color:'mustard', sub:'今天世界在聊什么'})}
+      ${win('流水线', '<div id="kanban" style="overflow-x:auto"></div>', {color:'teal', sub:'点票卡进工作台 · 金框=完整样例 · 可横滑'})}
+      ${win('投稿箱', `
           <div class="field"><label>类型</label>
             <div class="opts" id="subType">
               <div class="opt on" data-v="小段子">小段子</div>
               <div class="opt" data-v="待验证观点">待验证观点</div>
               <div class="opt" data-v="高质量报告">高质量报告</div>
             </div></div>
-          <textarea class="inp" id="subText" rows="3" style="resize:none">听说某 CSP 在东南亚偷偷谈了 3 个电力 PPA</textarea>
+          <textarea class="inp" id="subText" rows="4" style="resize:none">听说某 CSP 在东南亚偷偷谈了 3 个电力 PPA</textarea>
           <div class="field" style="margin-top:8px"><label>派给谁交叉验证</label>
             <div class="opts" id="subWho">
               ${DATA.researchers.filter(r=>!r.veto).map((r,i)=>
@@ -111,8 +111,6 @@ RENDER.research = function(){
             </div></div>
           <button class="px-btn on dotted" id="subGo" style="width:100%;margin-top:6px">▸ 投进流水线</button>`,
           {color:'pink', sub:'老板的小道消息也是生产资料'})}
-      </div>
-      <div>${win('流水线', '<div id="kanban"></div>', {color:'teal', sub:'点票卡进工作台 · 金框 = 完整样例'})}</div>
     </div>`;
   if(typeof renderInsightFeed === 'function') renderInsightFeed($('#ideaFeed'));
   else drawIdeas();
@@ -169,7 +167,7 @@ function bindSubmit(){
 function drawKanban(){
   const kb = $('#kanban'); if(!kb) return;
   kb.innerHTML = '';
-  kb.style.cssText = 'display:grid;grid-template-columns:repeat(6,1fr);gap:8px';
+  kb.style.cssText = 'display:grid;grid-template-columns:repeat(6,minmax(122px,1fr));gap:8px;min-width:760px';
   STAGES.forEach((st, si)=>{
     const col = el('div');
     col.innerHTML = `<div class="cap" style="border-bottom:3px solid var(--ink);padding-bottom:3px;margin-bottom:7px">
