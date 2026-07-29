@@ -4,7 +4,7 @@ node_modules/
 bridge/boss.key
 bridge/carried.jsonl
 bridge/inquiry_index.json
-kwdata/*.csv
+bridge/kwdata/
 
 bridge/__pycache__/
 **/__pycache__/

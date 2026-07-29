@@ -1,7 +1,7 @@
 #!/usr/bin/env python3.11
 """ricciflow 渲染闸 v3 — exit 0 才算过，不许 pipe 吞退出码。
 
-跑法: /opt/homebrew/bin/python3.11 /Users/bot/ricciflow/gate.py
+跑法: python3.11 gate.py（在仓库根目录）
 自起 http.server（Notification/manifest 需要 http 上下文）。
 """
 import asyncio
