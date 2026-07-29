@@ -35,6 +35,10 @@ RENDER.sys = function(){
         这些开关画出来是让你知道它们存在，不是让你关的。<br>
         真实系统里它们是代码闸：违反就 raise，不是提醒。</div>`, {color:'coral'})}
       <div class="col">
+        ${win('装修模式 · 组件启停', `
+          <div class="t-xs t-dim" style="font-weight:700;margin-bottom:8px;line-height:1.7">
+            关掉的组件：办公室家具变灰、HUD 图标消失、热点失效。像卖家具，但可以随时买回来。</div>
+          <div id="decorList"></div>`, {color:'pink'})}
         ${win('这个 demo 是什么', `
           <div class="t-sm" style="line-height:1.85">
             这是<b>产品形态验证</b>，不是能用的系统。<br><br>
