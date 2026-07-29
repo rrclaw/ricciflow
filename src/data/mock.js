@@ -42,8 +42,8 @@ DATA.sources = [
   {id:'polymarket', n:'Polymarket',          g:'sub',   t:'Gamma API', freq:'实时',      conf:3, fresh:0,  today:12,   auth:'无', bucket:'research_assets', on:true,  live:true, note:'预测市场 24h 成交榜。真金白银在赌什么=宏观/事件领先指标。灵感流实时源。'},
   {id:'tmtbreakout',n:'TMT Breakout',        g:'sub',   t:'RSS',      freq:'日更',     conf:4, fresh:0,  today:4,    auth:'无', bucket:'research_assets', on:true,  live:true, note:'美股科技投研前沿 substack。Morning/EOD Wrap 覆盖当日要闻。灵感流实时源。'},
   {id:'reddit',     n:'Reddit',              g:'sub',   t:'OAuth API', freq:'实时',      conf:2, fresh:0,  today:0,    auth:'OAuth key', bucket:'personal_assets', on:false, note:'散户情绪风向。免费：reddit.com/prefs/apps 建 script app 拿 client_id+secret，填这里即接通（100 QPM 免费）。'},
-  {id:'epoch',      n:'Epoch AI',            g:'sub',   t:'待接入',    freq:'—',        conf:4, fresh:0,  today:0,    auth:'无官方 MCP', bucket:'research_assets', on:false, note:'算力/模型训练规模权威数据（epoch.ai）。有公开数据集但无官方 MCP，待接入。'},
-  {id:'ramp',       n:'Ramp 消费数据',       g:'expert',t:'待接入',    freq:'—',        conf:4, fresh:0,  today:0,    auth:'企业账号', bucket:'research_assets', on:false, locked:true, note:'企业支付/消费 spending-side 数据。需企业账号，无公开 MCP，待接入。'}
+  {id:'epoch',      n:'Epoch AI',            g:'sub',   t:'公开CSV',   freq:'日更',     conf:5, fresh:0,  today:6,    auth:'无', bucket:'research_assets', on:true,  live:true, note:'epoch.ai 权威 AI 模型/GPU集群规模数据集（公开 CSV 适配器）。灵感流前沿模型时间线。真接通。'},
+  {id:'ramp',       n:'Ramp 消费数据',       g:'expert',t:'待接入',    freq:'—',        conf:4, fresh:0,  today:0,    auth:'企业账号', bucket:'research_assets', on:false, locked:true, note:'企业支付/消费 spending-side 数据。核实：无公开数据 API（ramp.com/api 404），需企业账号授权，暂无法接入。'}
 ];
 
 DATA.presets = {

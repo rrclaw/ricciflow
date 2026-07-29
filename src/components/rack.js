@@ -222,6 +222,7 @@ function openSourceDrawer(id){
         ${[1,2,3,4,5].map(a=>`<div class="opt ${s.conf===a?'on':''}" data-act="conf" data-v="${a}">${a}★</div>`).join('')}
       </div>
     </div>
+    ${sourceConfigHTML(s)}
     <hr class="hr" style="margin:13px 0 11px">
     <button class="px-btn on dotted" id="btnTest" style="width:100%;margin-bottom:9px">▶ 测试连接</button>
     <div class="console" id="testLog">// 等待测试…</div>
@@ -237,7 +238,60 @@ function openSourceDrawer(id){
     RENDER.sources();        /* 重画卡带 + tab 计数 */
     openSourceDrawer(id);    /* 抽屉保持打开 */
   });
+  bindSourceConfig(s);
   $('#btnTest').onclick = ()=> runSourceTest(s);
+}
+
+/* 需要填 key/URL 的源，给真实输入框（存本机 + 同步桥） */
+function srcCfg(id){ return JSON.parse(localStorage.getItem('rf_src_'+id) || '{}'); }
+function sourceConfigHTML(s){
+  const c = srcCfg(s.id);
+  if(s.id === 'substack'){
+    return `<hr class="hr" style="margin:13px 0 11px">
+      <div class="field"><label>SUBSTACK RSS 地址（可填多个，逗号分隔）</label>
+        <input class="inp" id="cfgSubUrl" placeholder="https://xxx.substack.com/feed" value="${(c.urls||[]).join(', ')}"></div>
+      <div class="t-xs t-dim" style="font-weight:700;line-height:1.7">
+        任意 substack 主页地址后加 <b>/feed</b> 就是 RSS。自定义域（如 tmtbreakout.com/feed）也行。<br>
+        例：doomberg.substack.com/feed</div>
+      <button class="px-btn sm" id="cfgSubSave" style="margin-top:8px">保存 RSS</button>`;
+  }
+  if(s.id === 'reddit'){
+    return `<hr class="hr" style="margin:13px 0 11px">
+      <div class="field"><label>CLIENT ID</label>
+        <input class="inp" id="cfgRedId" placeholder="app 名下方那串 14 位" value="${c.client_id||''}"></div>
+      <div class="field"><label>CLIENT SECRET</label>
+        <input class="inp" id="cfgRedSec" type="password" placeholder="${c.secret?'已存 '+c.secret.slice(0,4)+'****':'secret 那串'}"></div>
+      <div class="field"><label>关注的 subreddit（逗号分隔）</label>
+        <input class="inp" id="cfgRedSubs" placeholder="stocks,wallstreetbets,options" value="${(c.subs||['stocks','wallstreetbets']).join(',')}"></div>
+      <div class="bridge" style="margin-top:8px">reddit.com/prefs/apps → create app → 选 <b>script</b> → redirect uri 填 http://localhost:8080 → 拿 client_id + secret 填上面。免费 100 次/分钟。</div>
+      <button class="px-btn sm" id="cfgRedSave" style="margin-top:8px">保存 Key</button>`;
+  }
+  return '';
+}
+function bindSourceConfig(s){
+  const save = (id, obj)=>{
+    localStorage.setItem('rf_src_'+id, JSON.stringify(obj));
+    /* 同步给桥（有钥匙时）*/
+    if(typeof VAULT!=='undefined' && VAULT.key){
+      fetch(BRIDGE+'/api/src_config?key='+encodeURIComponent(VAULT.key), {method:'POST',
+        headers:{'Content-Type':'application/json'}, body:JSON.stringify({id, cfg:obj})}).catch(()=>{});
+    }
+  };
+  const sub = $('#cfgSubSave');
+  if(sub) sub.onclick = ()=>{
+    const urls = $('#cfgSubUrl').value.split(',').map(x=>x.trim()).filter(Boolean);
+    save('substack', {urls}); s.on = true; RENDER.sources(); openSourceDrawer('substack');
+    toast('已保存 '+urls.length+' 个 RSS。测试连接看抓取');
+  };
+  const red = $('#cfgRedSave');
+  if(red) red.onclick = ()=>{
+    const prev = srcCfg('reddit');
+    const sec = $('#cfgRedSec').value.trim();
+    save('reddit', {client_id:$('#cfgRedId').value.trim(), secret: sec||prev.secret||'',
+      subs:$('#cfgRedSubs').value.split(',').map(x=>x.trim()).filter(Boolean)});
+    s.on = true; s.auth='OAuth key ✓'; RENDER.sources(); openSourceDrawer('reddit');
+    toast('Reddit key 已保存。测试连接验证');
+  };
 }
 
 async function runSourceTest(s){

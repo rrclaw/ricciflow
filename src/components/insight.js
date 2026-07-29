@@ -36,6 +36,7 @@ async function renderInsightFeed(mount){
       <span class="tag ${d.live?'cyan':'rose'}">${d.live?'🟢 实时':'演示'}</span>
       ${infoDot(methodAll)}
       <span class="sp"></span>
+      <button class="px-btn sm ghost" id="cluePool">≡ 线索池 ${DATA.clues.length}</button>
       <button class="px-btn sm ghost" id="insightRefresh">↻</button></div>` +
     d.items.map((it, i)=>`
       <div class="gap-item" style="margin-bottom:7px">
@@ -53,6 +54,7 @@ async function renderInsightFeed(mount){
         </div>
       </div>`).join('');
   const rf = $('#insightRefresh'); if(rf) rf.onclick = async ()=>{ await insightFetch(true); renderInsightFeed(mount); };
+  const cp = $('#cluePool'); if(cp) cp.onclick = openCluePool;
   $$('[data-ins-go]').forEach(b=> b.onclick = ()=>{
     DATA.tickets.push({id:'t'+Date.now(), title:b.dataset.insGo, stage:0, days:0,
       prov:'灵感·search_alpha', recipe:{src:['SemiAnalysis','高临'], res:['tech'], mode:'快研'}});
@@ -61,7 +63,40 @@ async function renderInsightFeed(mount){
   });
   $$('[data-ins-ask]').forEach(b=> b.onclick = ()=> openInquiry(b.dataset.insAsk));
   $$('[data-ins-clue]').forEach(b=> b.onclick = ()=>{
-    DATA.clues.push({src:'search_alpha', hook:b.dataset.insClue});
-    toast('已存线索池');
+    DATA.clues.push({src:'灵感流', hook:b.dataset.insClue, t:new Date().toISOString().slice(5,16).replace('T',' ')});
+    toast('已存进线索池（灵感流右上「≡ 线索池」查看）');
+    renderInsightFeed(mount);
   });
+
+  function openCluePool(){
+    openModal(`
+      <div class="win-bar" style="background:var(--mustard);color:var(--ink)">
+        <span>线索池 · ${DATA.clues.length} 条待消化</span>
+        <span class="dots" id="mClose" style="cursor:pointer">_ □ ×</span></div>
+      <div style="padding:13px;max-height:70vh;overflow-y:auto">
+        <div class="t-xs t-dim" style="font-weight:700;margin-bottom:8px">
+          从灵感流/饭局/NPC交流「存线索」来的都在这。攒够想法就转成研究票。</div>
+        ${DATA.clues.length ? DATA.clues.map((c,i)=>`
+          <div class="gap-item" style="margin-bottom:6px">
+            <div class="why" style="color:var(--ink)"><span class="tag">${c.src||'线索'}</span>
+              ${c.t?'<span class="t-dim">'+c.t+'</span>':''}<br>${c.hook||c.title||''}</div>
+            <div class="row" style="gap:4px;margin-top:3px">
+              <button class="px-btn sm" data-clue-go="${i}">▸ 转研究票</button>
+              <button class="px-btn sm ghost danger" data-clue-del="${i}">✕ 删</button>
+            </div>
+          </div>`).join('') : '<div class="t-dim" style="font-weight:700">空 · 灵感卡点「≡存线索」攒到这</div>'}
+      </div>`);
+    $('#mClose').onclick = closeModal;
+    $$('#modalBox [data-clue-go]').forEach(b=> b.onclick = ()=>{
+      const c = DATA.clues[+b.dataset.clueGo];
+      DATA.tickets.push({id:'t'+Date.now(), title:(c.hook||c.title||'线索').slice(0,16), stage:0, days:0,
+        prov:'线索池·'+(c.src||''), recipe:{src:['web'], res:['tech'], mode:'快研'}});
+      DATA.clues.splice(+b.dataset.clueGo, 1);
+      closeModal(); if(typeof drawKanban==='function') drawKanban();
+      toast('已转研究票 → 进「灵感」列'); renderInsightFeed(mount);
+    });
+    $$('#modalBox [data-clue-del]').forEach(b=> b.onclick = ()=>{
+      DATA.clues.splice(+b.dataset.clueDel, 1); openCluePool(); renderInsightFeed(mount);
+    });
+  }
 }

@@ -8,3 +8,4 @@ kwdata/*.csv
 
 bridge/__pycache__/
 **/__pycache__/
+bridge/src_config.json

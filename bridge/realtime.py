@@ -161,6 +161,95 @@ def substack_feed(url, n=2):
     except Exception as e:
         return {"ok": False, "error": str(e), "items": []}
 
+def epoch_models(n=2):
+    """Epoch AI 公开数据集 → 最新发布的重要模型（权威 AI 前沿时间线）"""
+    import csv, io
+    try:
+        handlers = []
+        if PROXY:
+            handlers.append(urllib.request.ProxyHandler({"http": PROXY, "https": PROXY}))
+        handlers.append(urllib.request.HTTPSHandler(context=_CTX))
+        op = urllib.request.build_opener(*handlers)
+        req = urllib.request.Request("https://epoch.ai/data/notable_ai_models.csv",
+                                     headers={"User-Agent": UA})
+        raw = op.open(req, timeout=15).read().decode("utf-8", "ignore")
+        rows = list(csv.reader(io.StringIO(raw)))
+        hdr = rows[0]
+        di = next((i for i, c in enumerate(hdr) if "publication date" in c.lower()), None)
+        mi = next((i for i, c in enumerate(hdr) if c.lower() == "model"), 0)
+        oi = next((i for i, c in enumerate(hdr) if "organization" in c.lower()), None)
+        dom = next((i for i, c in enumerate(hdr) if c.lower() == "domain"), None)
+        data = [r for r in rows[1:] if di and len(r) > di and r[di]]
+        data.sort(key=lambda r: r[di], reverse=True)
+        out = []
+        for r in data[:n]:
+            model = r[mi]
+            org = r[oi] if oi and len(r) > oi else ""
+            out.append({
+                "theme": org or _lead_entity(model), "topic": f"{model}（{r[di]} 发布）", "heat": 2,
+                "fresh": True, "src": "Epoch AI·前沿模型",
+                "method": f"来自 Epoch AI 公开数据集 notable_ai_models（权威）。"
+                          f"{r[di]} {org} 发布 {model}。追前沿模型=追算力/应用的领先指标。",
+            })
+        return {"ok": True, "items": out}
+    except Exception as e:
+        return {"ok": False, "error": f"{type(e).__name__}: {e}", "items": []}
+
+import base64
+HERE_RT = os.path.dirname(os.path.abspath(__file__))
+def _src_cfg(sid):
+    cf = os.path.join(HERE_RT, "src_config.json")
+    if os.path.exists(cf):
+        try: return json.load(open(cf)).get(sid, {})
+        except: pass
+    return {}
+
+def reddit_hot(n=3):
+    """Reddit OAuth client_credentials → 关注 subreddit 的热帖（散户情绪）"""
+    c = _src_cfg("reddit")
+    cid, sec = c.get("client_id"), c.get("secret")
+    if not (cid and sec):
+        return {"ok": False, "error": "未配 reddit key（数据源机架里填）", "items": []}
+    subs = c.get("subs") or ["stocks", "wallstreetbets"]
+    try:
+        handlers = []
+        if PROXY:
+            handlers.append(urllib.request.ProxyHandler({"http": PROXY, "https": PROXY}))
+        handlers.append(urllib.request.HTTPSHandler(context=_CTX))
+        op = urllib.request.build_opener(*handlers)
+        auth = base64.b64encode(f"{cid}:{sec}".encode()).decode()
+        tok_req = urllib.request.Request("https://www.reddit.com/api/v1/access_token",
+            data=b"grant_type=client_credentials",
+            headers={"Authorization": f"Basic {auth}", "User-Agent": "ricciflow/0.1"})
+        tok = json.load(op.open(tok_req, timeout=10))["access_token"]
+        out = []
+        for sub in subs[:2]:
+            req = urllib.request.Request(f"https://oauth.reddit.com/r/{sub}/hot?limit=4",
+                headers={"Authorization": f"Bearer {tok}", "User-Agent": "ricciflow/0.1"})
+            d = json.load(op.open(req, timeout=10))
+            for ch in d["data"]["children"][:3]:
+                pd = ch["data"]
+                out.append({"theme": _lead_entity(pd.get("title","")), "topic": pd.get("title","")[:56],
+                    "heat": 2, "fresh": True, "src": f"reddit·r/{sub}",
+                    "method": f"Reddit r/{sub} 热帖（{pd.get('ups',0)}↑）。散户情绪风向。"})
+                if len(out) >= n: return {"ok": True, "items": out}
+        return {"ok": True, "items": out}
+    except Exception as e:
+        return {"ok": False, "error": f"{type(e).__name__}: {e}", "items": []}
+
+def substack_configured(n=3):
+    c = _src_cfg("substack")
+    urls = c.get("urls") or []
+    out = []
+    for u in urls[:3]:
+        try:
+            for t in _rss_titles(u)[:2]:
+                out.append({"theme": _lead_entity(t), "topic": t[:56], "heat": 1, "fresh": True,
+                    "src": "substack", "method": f"来自 {u}"})
+                if len(out) >= n: return {"ok": True, "items": out}
+        except Exception: pass
+    return {"ok": True, "items": out}
+
 def realtime_probe():
     """数据源卡带用：探活各实时源"""
     r = {}
@@ -179,6 +268,20 @@ def realtime_probe():
         r["tmtbreakout"] = True
     except Exception:
         r["tmtbreakout"] = False
+    try:
+        _get("https://epoch.ai/data/notable_ai_models.csv", timeout=8) if False else None
+        # epoch 是 CSV 非 JSON，用 HEAD 探
+        h = urllib.request.build_opener(urllib.request.HTTPSHandler(context=_CTX))
+        rq = urllib.request.Request("https://epoch.ai/data/notable_ai_models.csv",
+                                    headers={"User-Agent": UA}, method="HEAD")
+        if PROXY:
+            h = urllib.request.build_opener(
+                urllib.request.ProxyHandler({"http": PROXY, "https": PROXY}),
+                urllib.request.HTTPSHandler(context=_CTX))
+        h.open(rq, timeout=8)
+        r["epoch"] = True
+    except Exception:
+        r["epoch"] = False
     return r
 
 if __name__ == "__main__":

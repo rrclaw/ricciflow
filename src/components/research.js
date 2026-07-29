@@ -95,7 +95,7 @@ RENDER.research = function(){
     </div>
     <div style="display:grid;grid-template-columns:300px 1fr;gap:12px;align-items:start">
       <div class="col">
-        ${win('灵感流', '<div id="ideaFeed"></div>', {color:'mustard', sub:'今天世界在聊什么'})}
+        ${win('灵感流', '<div id="ideaFeed" style="max-height:46vh;overflow-y:auto"></div>', {color:'mustard', sub:'今天世界在聊什么'})}
         ${win('投稿箱', `
           <div class="field"><label>类型</label>
             <div class="opts" id="subType">

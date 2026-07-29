@@ -176,6 +176,22 @@ class H(http.server.BaseHTTPRequestHandler):
         if u.path == "/api/health":
             return self._send(200, {"ok": True, "docs": len(DOCS), "auth": self._auth(),
                                     "distill": distill is not None})
+        if u.path == "/api/source_peek":
+            sid = (q.get("id") or [""])[0]
+            try:
+                import realtime
+                if sid == "epoch":
+                    return self._send(200, realtime.epoch_models(6))
+                if sid == "aihot":
+                    return self._send(200, realtime.aihot_today(6))
+                if sid == "polymarket":
+                    return self._send(200, realtime.polymarket_hot(6))
+                if sid == "tmtbreakout":
+                    return self._send(200, {"ok": True, "items":
+                        [{"topic": t} for t in realtime._rss_titles("https://www.tmtbreakout.com/feed")[:6]]})
+                return self._send(200, {"ok": False, "error": "该源无 peek"})
+            except Exception as e:
+                return self._send(200, {"ok": False, "error": str(e)})
         if u.path == "/api/realtime_probe":
             try:
                 import realtime
@@ -242,6 +258,17 @@ class H(http.server.BaseHTTPRequestHandler):
         if not self._auth():
             return self._send(401, {"error": "no key"})
         u = urlparse(self.path)
+        if u.path == "/api/src_config":
+            n = int(self.headers.get("Content-Length", 0))
+            body = json.loads(self.rfile.read(n) or b"{}")
+            cf = os.path.join(HERE, "src_config.json")
+            allc = {}
+            if os.path.exists(cf):
+                try: allc = json.load(open(cf))
+                except: pass
+            allc[body.get("id","")] = body.get("cfg", {})
+            json.dump(allc, open(cf, "w"), ensure_ascii=False)
+            return self._send(200, {"ok": True})
         if u.path == "/api/carry":
             n = int(self.headers.get("Content-Length", 0))
             body = json.loads(self.rfile.read(n) or b"{}")
