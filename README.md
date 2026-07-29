@@ -26,7 +26,7 @@
 ## 快速开始
 
 ```bash
-git clone <repo> && cd ricciflow
+git clone https://github.com/rrclaw/ricciflow.git && cd ricciflow
 python3 -m http.server 8000     # 或 npx serve
 open http://localhost:8000
 ```
@@ -79,7 +79,7 @@ src/
   notify/   notify(Notification API + 渠道配置)
   ui/       shell(组件注册表/面板/HUD)
   data/     mock(演示数据集中地)
-gate.py               渲染闸：52 项断言，exit 0 才算过
+gate.py               渲染闸：65 项断言，exit 0 才算过
 docs/roadmap.md       联机世界 / 三端 / 真实数据接入路线
 ```
 
