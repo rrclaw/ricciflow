@@ -18,7 +18,7 @@ async function insightFetch(force){
   } catch(e){}
   /* 回落：明确标注非实时 */
   INSIGHT_CACHE = {live:false, source:'演示占位（本地桥未运行）', items:[
-    {theme:'（示例）AI光模块', score:66, hook:'跑起 kb-bridge 就是真实的 search_alpha 突破点', why:'启动本地桥后此处显示每日实时萌芽热点', smart_money:false, maturity:''},
+    {theme:'（示例）超节点', ratio:2.6, count:45, fresh:false, hook:'跑起 kb-bridge 就是真实的机构周环比热搜', why:'启动本地桥后此处显示本周涨最快/新起的机构热点'},
   ]};
   INSIGHT_AT = now;
   return INSIGHT_CACHE;
@@ -37,10 +37,9 @@ async function renderInsightFeed(mount){
     d.items.map((it, i)=>`
       <div class="gap-item" style="margin-bottom:7px">
         <div class="gt">
-          <span class="tag gold">#${i+1} 萌芽</span>
+          <span class="tag ${it.fresh?'rose':'gold'}">${it.fresh?'🔥 新起':'📈 涨'+it.ratio+'x'}</span>
           <b style="flex:1">${it.theme}</b>
-          ${it.smart_money?'<span class="tag cyan" title="聪明分析师同步在搜">🧠</span>':''}
-          ${it.score?`<span class="tag">突破 ${it.score}</span>`:''}
+          ${it.count?`<span class="tag">${it.count} 搜</span>`:''}
         </div>
         <div class="why" style="color:var(--ink)">${it.hook || ''}</div>
         ${it.why?`<div class="t-xs t-dim" style="font-weight:700;line-height:1.6;margin:3px 0 5px">为什么现在看：${it.why}</div>`:''}
@@ -51,7 +50,7 @@ async function renderInsightFeed(mount){
         </div>
       </div>`).join('') +
     `<div class="t-xs t-dim" style="font-weight:700;line-height:1.6;margin-top:4px">
-       ${d.live?'突破点=机构搜索热度刚从沉寂里抬头，正是萌芽期。每天最多 3 个，不贪多。':''}</div>`;
+       ${d.live?'按机构搜索热度<b>周环比</b>排：涨最快 + 本周新起。'+(d.as_of?'数据截至 '+d.as_of+'。':'')+'实时源(aihot/polymarket)接入中。':''}</div>`;
   const rf = $('#insightRefresh'); if(rf) rf.onclick = async ()=>{ await insightFetch(true); renderInsightFeed(mount); };
   $$('[data-ins-go]').forEach(b=> b.onclick = ()=>{
     DATA.tickets.push({id:'t'+Date.now(), title:b.dataset.insGo, stage:0, days:0,

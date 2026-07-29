@@ -331,7 +331,7 @@ async def main():
         # ---------- INSIGHT 灵感流 / INQUIRY 提问台 ----------
         await page.click('[data-hud="research"]'); await page.wait_for_timeout(2000)
         ideas = await page.eval_on_selector_all("#ideaFeed .gap-item", "e=>e.length")
-        check(ideas >= 1, "灵感流有卡（实时或回落）")
+        check(ideas >= 1, "灵感流有卡")
         live_insight = await page.locator("text=🟢 实时").count()
         print(("  ok   灵感流 = search_alpha 实时" if live_insight else "  ok   灵感流回落（桥未跑，非硬失败）"))
         # 提问台：设钥匙后点「怎么问」

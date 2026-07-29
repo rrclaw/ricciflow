@@ -19,54 +19,73 @@ INQ_INDEX = os.path.join(HERE, "inquiry_index.json")
 #   来源：search_alpha 机构搜索热度的「突破点检测」+ 聪明分析师主题
 #   逻辑：突破分高 = 搜索热度刚从沉寂里抬头 = 萌芽期，正是要抓的
 # ============================================================
-def insight_daily(n=3):
-    out = {"generated_at": datetime.now().isoformat(timespec="seconds"),
-           "source": "search_alpha · 机构搜索热度突破点检测", "items": []}
+DESKTOP = os.path.join(HOME, "Desktop", "数据统计")
+KWDATA = os.path.join(HERE, "kwdata")   # 桌面 CSV 的本地副本（绕过 launchd TCC 桌面限制）
+
+def _latest_keyword_csvs():
+    import glob as _g, re as _re
+    fs = _g.glob(os.path.join(KWDATA, "*搜索关键词*.csv"))
+    if not fs:
+        fs = _g.glob(os.path.join(DESKTOP, "*搜索关键词*.csv"))
+    dated = []
+    for f in fs:
+        m = _re.search(r"(\d{4})_(\d{2})_(\d{2})", f)
+        if m: dated.append((m.group(0).replace("_", "-"), f))
+    dated.sort(reverse=True)
+    return dated
+
+def _read_kw(path):
+    import csv as _csv
+    m = {}
     try:
-        sys.path.insert(0, os.path.join(SA, "api"))
-        from search_alpha_api import change_point_themes, smart_analyst_themes, theme_maturity
-        cp = change_point_themes()
-        maturity = {}
-        try:
-            tm = theme_maturity()
-            for _, r in tm.iterrows():
-                maturity[str(r.get("theme", ""))] = str(r.get("stage", r.get("maturity", "")))
-        except Exception:
-            pass
-        smart = set()
-        try:
-            st = smart_analyst_themes()
-            for _, r in (st.iterrows() if hasattr(st, "iterrows") else []):
-                smart.add(str(r.get("theme", "")))
-        except Exception:
-            pass
-        rows = cp.sort_values("score", ascending=False).head(n * 3)
-        seen = set()
-        for _, r in rows.iterrows():
-            th = str(r["theme"])
-            if th in seen:
-                continue
-            seen.add(th)
-            delta = float(r.get("delta_excess", 0))
-            item = {
-                "theme": th,
-                "break_week": str(r.get("break_week", "")),
-                "score": round(float(r.get("score", 0)), 1),
-                "delta_excess": round(delta * 100, 2),
-                "n_post": int(r.get("n_post", 0)),
-                "smart_money": th in smart,
-                "maturity": maturity.get(th, ""),
-                "why": _insight_why(th, r, th in smart),
-                "hook": f"机构搜索热度在 {r.get('break_week','')} 出现突破，"
-                        f"超额搜索 +{delta*100:.1f}pp，已持续 {int(r.get('n_post',0))} 周",
-            }
-            out["items"].append(item)
-            if len(out["items"]) >= n:
-                break
-        out["ok"] = True
-    except Exception as e:
-        out["ok"] = False
-        out["error"] = f"{type(e).__name__}: {e}"
+        with open(path, encoding="utf-8-sig") as f:
+            for r in list(_csv.reader(f))[1:]:
+                if len(r) >= 2:
+                    try: m[r[0].strip()] = int(r[1])
+                    except: pass
+    except Exception:
+        pass
+    return m
+
+def insight_daily(n=3):
+    """机构搜索关键词周环比 → 本周涨最快/新起的热点（真·近期萌芽）"""
+    out = {"generated_at": datetime.now().isoformat(timespec="seconds"), "items": []}
+    csvs = _latest_keyword_csvs()
+    if len(csvs) < 1:
+        out["ok"] = False; out["error"] = "桌面数据统计无关键词 CSV"; return out
+    cur_date, cur_path = csvs[0]
+    prev = _read_kw(csvs[1][1]) if len(csvs) > 1 else {}
+    cur = _read_kw(cur_path)
+    out["source"] = f"机构搜索热度周环比 · 截至 {cur_date}"
+    out["as_of"] = cur_date
+    STOP = {"模型", "谷歌", "AMD", "英伟达", "苹果", "股票", "美股", "A股", "港股", "大盘", "指数"}
+    ranked = []
+    for k, v in cur.items():
+        if v < 8 or k in STOP or len(k) < 2:
+            continue
+        p = prev.get(k, 0)
+        delta = v - p
+        ratio = v / max(p, 1)
+        fresh = p == 0
+        # 平衡打分：够热(绝对量) + 涨得多(delta) + 涨得快(ratio) + 新起小加成
+        # 目标=既新鲜又有信号，避免小量新起(如13次)盖过超节点(45次2.6x)
+        score = v * 1.0 + delta * 2.5 + min(ratio, 6) * 5 + (18 if fresh and v >= 10 else 0)
+        ranked.append((score, k, v, p, delta, ratio, fresh))
+    ranked.sort(key=lambda x: -x[0])
+    for score, k, v, p, delta, ratio, fresh in ranked[:n]:
+        if fresh:
+            hook = f"本周机构搜索里<b>凭空冒出来</b>：{v} 次搜索，上周还是 0"
+            why = "这周才进机构视野，最典型的萌芽信号——趁没人写研报先看"
+        else:
+            hook = f"本周搜索 {v} 次，上周 {p} 次，<b>涨 {ratio:.1f} 倍</b>（+{delta}）"
+            why = f"关注度一周内{ratio:.1f}倍拉升，机构注意力正在快速切换过来"
+        out["items"].append({
+            "theme": k, "count": v, "prev": p, "delta": delta,
+            "ratio": round(ratio, 1), "fresh": fresh,
+            "score": round(score, 1), "as_of": cur_date,
+            "hook": hook, "why": why,
+        })
+    out["ok"] = True
     return out
 
 def _insight_why(theme, r, smart):
@@ -270,7 +289,7 @@ if __name__ == "__main__":
         r = insight_daily()
         print("[insight]", "ok" if r.get("ok") else r.get("error"))
         for it in r.get("items", []):
-            print(f"  · {it['theme']} (突破分{it['score']}, {it['break_week']}) — {it['why']}")
+            print(f"  · {it['theme']} ({it['hook']}) — {it['why']}")
     if cmd in ("inquiry", "both"):
         theme = sys.argv[2] if len(sys.argv) > 2 else "光模块"
         r = inquiry_for(theme)

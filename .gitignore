@@ -4,3 +4,4 @@ node_modules/
 bridge/boss.key
 bridge/carried.jsonl
 bridge/inquiry_index.json
+kwdata/*.csv
