@@ -12,6 +12,7 @@
 import hmac
 import http.server
 import json
+import os
 import random
 import re
 import time
@@ -180,6 +181,9 @@ class H(http.server.BaseHTTPRequestHandler):
             sid = (q.get("id") or [""])[0]
             try:
                 import realtime
+                if sid == "arr_mcp":
+                    import arrmcp
+                    return self._send(200, arrmcp.peek(7))
                 if sid == "epoch":
                     return self._send(200, realtime.epoch_models(6))
                 if sid == "aihot":

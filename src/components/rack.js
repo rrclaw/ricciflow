@@ -296,10 +296,18 @@ function bindSourceConfig(s){
   };
 }
 
+/* 实时源的「测试连接」是真的：打桥 → 打上游 → 把真拿到的记录打在控制台上。
+   桥不在（公网无钥匙 / 本地没起）才退回演示脚本，并且明说自己在演。 */
 async function runSourceTest(s){
   const log = $('#testLog'); if(!log) return;
   const btn = $('#btnTest'); btn.disabled = true;
   log.innerHTML = '';
+  if(s.live){
+    const ok = await runLiveSourceTest(s, log);
+    btn.disabled = false;
+    if(ok) return;
+    await typeInto(log, '\n> 回落演示脚本（真实拉取不可用）…', 11);
+  }
   const lines = [
     ['握手 ' + (s.auth === '无' ? '(免认证)' : '(' + s.auth + ')') + '…', ' ✓'],
     ['拉取样本 3 条…', ' ✓'],
@@ -320,6 +328,38 @@ async function runSourceTest(s){
   const card = $(`.cart[data-id="${s.id}"]`);
   if(card){ card.classList.add('flash'); setTimeout(()=>card.classList.remove('flash'), 500); }
   btn.disabled = false;
+}
+
+/* 真拉一次上游，成功返回 true。每条记录都是刚从源头回来的，不是写死的。 */
+async function runLiveSourceTest(s, log){
+  await typeInto(log, '\n> GET /api/source_peek?id=' + s.id + ' …', 11);
+  let d;
+  try{
+    const r = await fetch(BRIDGE + '/api/source_peek?id=' + encodeURIComponent(s.id) +
+      (typeof VAULT !== 'undefined' && VAULT.key ? '&key=' + encodeURIComponent(VAULT.key) : ''),
+      {signal: AbortSignal.timeout(15000)});
+    d = await r.json();
+  }catch(e){
+    log.innerHTML += '<span class="er"> 桥不通</span>';
+    return false;
+  }
+  if(!d || !d.ok || !(d.items || []).length){
+    log.innerHTML += '<span class="er"> ' + ((d && d.error) || '无数据') + '</span>';
+    return false;
+  }
+  log.innerHTML += '<span class="ok"> ✓ ' + d.items.length + ' 条' + (d.as_of ? ' · ' + d.as_of : '') + '</span>';
+  d.items.forEach(it=>{
+    const tail = it.arr != null ? '  ARR $' + it.arr + 'B · ' + (it.mult != null ? it.mult + 'x' : '—')
+               : it.date ? '  ' + it.date : '';
+    const line = document.createElement('span');
+    line.textContent = '\n  · ' + String(it.topic || it.title || '').slice(0, 46) + tail;
+    log.appendChild(line);
+  });
+  s.on = true; s.today = d.items.length;
+  drawCarts(); drawRackStat();
+  const card = $(`.cart[data-id="${s.id}"]`);
+  if(card){ card.classList.add('flash'); setTimeout(()=>card.classList.remove('flash'), 500); }
+  return true;
 }
 
 async function applyPreset(k){

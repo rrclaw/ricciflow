@@ -43,6 +43,7 @@ DATA.sources = [
   {id:'tmtbreakout',n:'TMT Breakout',        g:'sub',   t:'RSS',      freq:'日更',     conf:4, fresh:0,  today:4,    auth:'无', bucket:'research_assets', on:true,  live:true, note:'美股科技投研前沿 substack。Morning/EOD Wrap 覆盖当日要闻。灵感流实时源。'},
   {id:'reddit',     n:'Reddit',              g:'sub',   t:'OAuth API', freq:'实时',      conf:2, fresh:0,  today:0,    auth:'OAuth key', bucket:'personal_assets', on:false, note:'散户情绪风向。免费：reddit.com/prefs/apps 建 script app 拿 client_id+secret，填这里即接通（100 QPM 免费）。'},
   {id:'epoch',      n:'Epoch AI',            g:'sub',   t:'公开CSV',   freq:'日更',     conf:5, fresh:0,  today:6,    auth:'无', bucket:'research_assets', on:true,  live:true, note:'epoch.ai 权威 AI 模型/GPU集群规模数据集（公开 CSV 适配器）。灵感流前沿模型时间线。真接通。'},
+  {id:'arr_mcp',    n:'ARR Tracker（自建 MCP）', g:'quote', t:'MCP', freq:'日更', conf:5, fresh:0, today:7, auth:'无', bucket:'research_assets', on:true, live:true, note:'arr.polyalpha.cn/mcp — 自家的前沿实验室收入追踪器。6 个工具：公司 ARR 现值/收入密度/供需勾稽/需求二阶导/白名单序列。只读匿名，无 key。真接通。'},
   {id:'ramp',       n:'Ramp 消费数据',       g:'expert',t:'待接入',    freq:'—',        conf:4, fresh:0,  today:0,    auth:'企业账号', bucket:'research_assets', on:false, locked:true, note:'企业支付/消费 spending-side 数据。核实：无公开数据 API（ramp.com/api 404），需企业账号授权，暂无法接入。'}
 ];
 
