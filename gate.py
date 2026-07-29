@@ -288,7 +288,7 @@ async def main():
         await page.wait_for_timeout(2500)   # 让 AI 走几轮
         await page.click("#panelClose")
         await page.evaluate("openPhone()"); await page.wait_for_timeout(300)
-        check(await page.eval_on_selector_all(".ph-tab", "e=>e.length") == 3, "手机三 tab")
+        check(await page.eval_on_selector_all(".ph-tab", "e=>e.length") == 4, "手机四 tab（含待办）")
         await page.click('[data-pt="bosses"]'); await page.wait_for_timeout(200)
         await page.click('[data-pht="menghu"]'); await page.wait_for_timeout(200)
         await page.click("[data-phr]"); await page.wait_for_timeout(1400)
