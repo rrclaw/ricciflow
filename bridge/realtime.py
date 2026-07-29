@@ -99,6 +99,30 @@ def _is_skippable(title):
     tl = title.lower().strip()
     return any(sk in tl for sk in _SKIP_TITLES) and len(title) < 30
 
+def _title_subject(title):
+    """从标题提炼「明确的公司/题材」：股票 ticker > 已知公司 > 事件语义。
+    抽象长文标题（Fire Horse 之类）返回 None，不当热词塞进灵感流。"""
+    import re
+    # 1) 括号 ticker (STX)(KLAC) 或逗号列表 CDNS, CLS, KLAC —— 最强信号
+    tks = re.findall(r"\(([A-Z]{2,5})\)", title)
+    if tks: return tks[0]
+    # 全大写 ticker 序列（≥2 个连续大写词表明是 ticker 列表）
+    caps = re.findall(r"\b([A-Z]{2,5})\b", title)
+    caps = [c for c in caps if c not in ("TMTB","TMT","EOD","CEO","CFO","AI","GPU","CPU",
+            "IPO","SOTA","LLM","US","UK","EU","Q1","Q2","Q3","Q4","YoY","QoQ","API")]
+    if len(caps) >= 1 and re.search(r"[A-Z]{2,5}[,\s].*[A-Z]{2,5}", title):
+        return caps[0]                       # ticker 列表，取第一个
+    if len(caps) == 1 and caps[0] not in ("The","This","New"):
+        return caps[0]                       # 单个明确 ticker
+    # 2) 已知公司
+    for e in _CN_ENTS:
+        if e.lower() in title.lower(): return e
+    # 3) 事件语义
+    for kws, label in _EVENT_MAP:
+        if any(k in title.lower() for k in kws): return label
+    # 4) 抽象标题 → 不产热词
+    return None
+
 def _lead_entity(title):
     import re
     tl = title.lower()
@@ -133,17 +157,23 @@ def _rss_titles(url, timeout=12):
     return [t.strip() for t in titles[1:] if t.strip()]   # [0] 是频道名
 
 def tmtbreakout_today(n=2):
-    """TMT Breakout（投研前沿 substack）最近文章标题 → 灵感条"""
+    """TMT Breakout → 抓标题里的公司/题材（EOD Wrap 里点名的 ticker 才是信号）"""
     out = []
     try:
-        titles = [t for t in _rss_titles("https://www.tmtbreakout.com/feed") if not _is_skippable(t)]
-        for t in titles[:n]:
+        titles = _rss_titles("https://www.tmtbreakout.com/feed")
+        seen = set()
+        for t in titles:
+            th = _title_subject(t)
+            if not th or th in seen:
+                continue
+            seen.add(th)
             out.append({
-                "theme": _lead_entity(t), "topic": t[:56], "heat": 2, "fresh": True,
+                "theme": th, "topic": t[:56], "heat": 2, "fresh": True,
                 "src": "TMT Breakout·前沿",
-                "method": "来自 TMT Breakout（tmtbreakout.com）投研前沿 substack。"
-                          "美股科技一线，Morning/EOD Wrap 覆盖当日要闻。",
+                "method": "来自 TMT Breakout 投研前沿 substack。标题点名的 ticker=当日焦点。",
             })
+            if len(out) >= n:
+                break
         return {"ok": True, "items": out}
     except Exception as e:
         return {"ok": False, "error": f"{type(e).__name__}: {e}", "items": []}
@@ -238,16 +268,27 @@ def reddit_hot(n=3):
         return {"ok": False, "error": f"{type(e).__name__}: {e}", "items": []}
 
 def substack_configured(n=3):
+    """配置的 substack RSS → 深度长文线索（作者 + 文章标题，非热词）"""
     c = _src_cfg("substack")
     urls = c.get("urls") or []
     out = []
+    NAMES = {"doomberg":"Doomberg", "bearcave":"Bear Cave", "mostlyborrowedideas":"MBI"}
     for u in urls[:3]:
         try:
-            for t in [x for x in _rss_titles(u) if not _is_skippable(x)][:2]:
-                out.append({"theme": _lead_entity(t), "topic": t[:56], "heat": 1, "fresh": True,
-                    "src": "substack", "method": f"来自 {u}"})
-                if len(out) >= n: return {"ok": True, "items": out}
-        except Exception: pass
+            host = urllib.parse.urlparse(u).netloc.split(".")
+            key = host[0] if host[0] != "www" else host[1]
+            author = NAMES.get(key, key)
+            titles = [x for x in _rss_titles(u) if not _is_skippable(x) and x.lower() != author.lower()]
+            for t in titles[:1]:
+                out.append({
+                    "theme": author, "topic": f"新文：{t[:44]}", "heat": 1, "fresh": True,
+                    "src": f"substack·深度",
+                    "method": f"{author} 最新长文（{u}）。深度研究博客，作为阅读线索，非市场热词。",
+                })
+                if len(out) >= n:
+                    return {"ok": True, "items": out}
+        except Exception:
+            pass
     return {"ok": True, "items": out}
 
 def realtime_probe():

@@ -79,7 +79,10 @@ def insight_daily(n=2):
         return _insight_cache["data"]
     r = _insight_compute(n)
     if r.get("ok"):
-        _insight_cache["data"] = r; _insight_cache["at"] = _t.time()
+        srcs = len(set(x.get("src","").split("·")[0] for x in r.get("items",[])))
+        # 只有抓到 ≥4 个源的完整结果才长缓存；残缺结果只缓 2 分钟等重试
+        _insight_cache["data"] = r
+        _insight_cache["at"] = _t.time() if srcs >= 4 else _t.time() - 1680
     return r
 
 def _insight_compute(n=2):
@@ -136,9 +139,85 @@ def _insight_compute(n=2):
                     r = futs[k].result(timeout=10)
                     if r.get("ok"): out["items"] += r["items"]
                 except Exception: pass
+    # ── 统一后处理：去重 / 引子补全 / 引子中文化 / 热度重分级 ──
+    items = out["items"]
+    # a) 同 theme 去重（保留热度高的）
+    dedup = {}
+    for it in items:
+        k = it["theme"]
+        if k not in dedup or (it.get("heat",1) > dedup[k].get("heat",1)):
+            dedup[k] = it
+    items = list(dedup.values())
+    # b) 机构热搜词补引子：panel 没有就去 aihot/tmt 当天标题里交叉找
+    all_topics = [x.get("topic","") for x in items if x.get("topic")]
+    for it in items:
+        if not it.get("topic"):
+            hit = _cross_hook(it["theme"], all_topics)
+            it["topic"] = hit or _plain_hook(it["theme"])
+    # c) 英文引子提炼成中文一句
+    for it in items:
+        it["topic"] = _zh_hook(it.get("topic",""))
+    # d) 热度重分级：跨源归一，别全 3 火
+    for it in items:
+        it["heat"] = _regrade_heat(it)
+    out["items"] = items
     out["ok"] = True
-    out["source"] = "机构周环比 + aihot + polymarket + TMT Breakout"
+    out["source"] = "机构周环比 + aihot + polymarket + TMT Breakout + substack"
     return out
+
+def _cross_hook(theme, topics):
+    """机构词的引子：在今日 aihot/tmt 标题里找含该词的句子"""
+    for t in topics:
+        if theme and theme in t:
+            return t
+    return ""
+
+_THEME_GLOSS = {
+    "超节点": "华为/国产算力互联架构，对标 NVLink 的整机柜超节点方案",
+    "KIMI": "月之暗面 Kimi 大模型，长上下文/Agent 方向",
+    "小米": "小米汽车/AI/端侧模型相关",
+    "NPO": "近封装光学（Near-Package Optics），CPO 的过渡方案",
+    "液冷": "AI 服务器散热，风冷转液冷的确定性升级",
+    "光芯片磷化铟": "光模块上游 InP 衬底，国产替代窄口",
+}
+def _plain_hook(theme):
+    return _THEME_GLOSS.get(theme, f"机构本周搜索快速升温，具体讨论待展开研究")
+
+def _zh_hook(t):
+    """英文引子提炼为中文要点（预测市场/英文标题）"""
+    if not t: return t
+    import re
+    if not re.search(r"[a-zA-Z]", t): return t   # 已是中文
+    tl = t.lower()
+    rules = [
+        ("fed decrease", "预测市场：押注美联储降息"),
+        ("fed increase", "预测市场：押注美联储加息"),
+        ("no change in fed", "预测市场：押注美联储利率不变"),
+        ("interest rate", "预测市场：美联储利率决议"),
+        ("prime minister", "预测市场：某国政局/大选"),
+        ("president", "预测市场：大选/领导人"),
+        ("recession", "预测市场：衰退概率"),
+        ("bitcoin", "预测市场：比特币价格"),
+    ]
+    for kw, zh in rules:
+        if kw in tl: return zh
+    # 中英混合标题保留；纯英文截断加标注
+    return t[:44] + "…（英文原题）" if len(t) > 44 else t
+
+def _regrade_heat(it):
+    """跨源热度归一：机构涨幅/预测市场成交额/新起 分级，避免全 3 火"""
+    src = it.get("src","")
+    if "机构" in src:
+        r = it.get("ratio",1); fresh = it.get("fresh")
+        return 3 if (r>=2.5 or (fresh and it.get("count",0)>=15)) else 2 if r>=1.6 else 1
+    if "polymarket" in src:
+        v = it.get("vol",0)
+        return 3 if v>=5 else 2 if v>=2 else 1
+    if "aihot" in src:
+        return 2   # AI 日报统一 2 火（今日新但未必市场级）
+    if "TMT" in src or "substack" in src:
+        return 2 if it.get("theme","")[:1].isupper() else 1
+    return it.get("heat",1)
 
 def _insight_why(theme, r, smart):
     delta = float(r.get("delta_excess", 0)) * 100
@@ -170,22 +249,71 @@ LAYER_RULES = [
     ("证伪风险", ["风险", "不及预期", "挑战", "担忧", "假设", "证伪", "下行", "如果", "什么情况", "会不会"]),
 ]
 
-GENERIC_OPENERS = {
-    "现状定位": ["{t}到底是什么、在整条产业链的哪个环节、当前市场规模和渗透率大概多少？",
-                 "谁是{t}这条链上真正绕不开的卡点，价值主要沉淀在哪个环节？"],
-    "产能供给": ["{t}相关产能目前是紧张还是过剩，扩产周期多长、瓶颈卡在哪一步？",
-                 "如果需求超预期，{t}这条链上谁的产能弹性最大、谁最先受益？"],
-    "良率技术": ["{t}的核心技术壁垒是什么，良率/工艺难度决定了国产替代能不能成吗？",
-                 "{t}有没有正在发生的技术路线切换，谁站对了、谁可能被颠覆？"],
-    "价格盈利": ["{t}的价格怎么传导到毛利再到净利，涨价10%对相关环节的利润弹性有多大？",
-                 "{t}这个热点最终能不能变成钱，还是只是叙事？钱会被谁赚走？"],
-    "竞争格局": ["{t}的竞争格局是寡头还是分散，份额怎么分、客户绑定有多深？",
-                 "买{t}这个主题，具体该买哪个环节、哪家公司，而不是买指数？"],
-    "边际变化": ["{t}最近一个季度发生了什么边际变化，环比、增速、二阶导在往哪个方向走？",
-                 "{t}现在的股价隐含了多少预期，市场是不是已经充分定价？"],
-    "证伪风险": ["什么信号一旦出现，就说明{t}这个逻辑死了？请列出下车信号。",
-                 "{t}最大的风险和最容易被证伪的假设是什么，最坏情况有多坏？"],
+# 话题 → 同义/相关词扩展（让新词/别名能命中语料里的真问题）
+TOPIC_EXPAND = {
+    "超节点": ["算力", "互联", "机柜", "服务器", "CoWoS", "NVLink", "光互联", "铜连接", "交换"],
+    "KIMI": ["大模型", "推理", "训练", "Agent", "长上下文", "月之暗面", "算力", "token"],
+    "小米": ["汽车", "端侧", "SoC", "手机", "AI眼镜"],
+    "美联储利率": ["利率", "流动性", "降息", "加息", "宏观", "美债", "汇率"],
+    "液冷": ["散热", "服务器", "数据中心", "温控", "冷板"],
+    "光芯片磷化铟": ["磷化铟", "InP", "衬底", "光模块", "CW光源", "激光器"],
+    "NPO": ["光互联", "CPO", "光模块", "封装", "近封装"],
+    "光模块": ["光模块", "800G", "1.6T", "硅光", "EML", "CPO", "光互联"],
 }
+# 话题类型 → 决定用哪套「通用起手式」（AI模型/宏观/硬件公司/产业题材）
+def _topic_type(theme):
+    t = theme.lower()
+    if any(k in theme for k in ["KIMI", "GPT", "模型", "大模型", "Claude", "混元", "智谱", "Agent"]) or "kimi" in t or "gpt" in t:
+        return "ai_model"
+    if any(k in theme for k in ["美联储", "利率", "通胀", "衰退", "汇率", "宏观", "大选", "政局", "关税", "地缘"]):
+        return "macro"
+    import re
+    if re.fullmatch(r"[A-Z]{2,5}", theme):   # 纯 ticker
+        return "company"
+    if re.fullmatch(r"[A-Za-z][A-Za-z0-9\.\-]{2,}", theme):  # 英文公司名(Seagate/Doomberg)
+        return "company"
+    return "industry"
+
+# 四套按话题类型的起手式：industry(产业) / ai_model(AI模型) / macro(宏观) / company(公司)
+GENERIC_BY_TYPE = {
+ "industry": {
+    "现状定位": ["{t}到底是什么、在产业链哪个环节、当前规模和渗透率多少？", "谁是{t}这条链上绕不开的卡点，价值沉淀在哪个环节？"],
+    "产能供给": ["{t}相关产能紧张还是过剩，扩产周期多长、瓶颈在哪？", "需求超预期时{t}谁的产能弹性最大、谁最先受益？"],
+    "良率技术": ["{t}的核心技术壁垒是什么，良率/工艺决定国产替代能不能成吗？", "{t}有没有正在发生的技术路线切换，谁站对了？"],
+    "价格盈利": ["{t}价格怎么传导到毛利再到净利，涨价10%的利润弹性多大？", "{t}最终能不能变成钱，钱被谁赚走？"],
+    "竞争格局": ["{t}竞争格局是寡头还是分散，份额怎么分？", "买{t}该买哪个环节哪家公司，而不是买指数？"],
+    "边际变化": ["{t}最近一季度的边际变化，环比/增速/二阶导往哪走？", "{t}股价隐含了多少预期，是否已充分定价？"],
+    "证伪风险": ["什么信号出现说明{t}逻辑死了？列出下车信号。", "{t}最容易被证伪的假设是什么，最坏情况多坏？"],
+ },
+ "ai_model": {
+    "现状定位": ["{t}的定位和目标场景是什么，对标谁、跑分/口碑如何？", "{t}背后是谁，商业模式是 API、订阅还是开源？"],
+    "产能供给": ["{t}的训练/推理算力从哪来，卡够不够、成本结构如何？", "{t}的调用量/日活趋势，供给能不能跟上需求？"],
+    "良率技术": ["{t}的技术路线（稠密/MoE、上下文、多模态）有什么独到？", "{t}相比上一代/竞品，能力边际提升在哪、护城河是什么？"],
+    "价格盈利": ["{t}的 token 定价与推理成本，单位经济性算得过来吗？", "{t}怎么变现，谁为它付费、付费意愿多强？"],
+    "竞争格局": ["{t}和 OpenAI/Anthropic/国产同行比，差在哪、强在哪？", "{t}的生态（开发者、应用、Agent）粘性如何？"],
+    "边际变化": ["{t}最近发布/更新带来了什么边际变化，渗透率拐点到了吗？", "{t}的关注度是真实需求还是发布会营销？怎么区分？"],
+    "证伪风险": ["什么信号说明{t}只是叙事、不是真需求？", "{t}最大的风险（合规、算力、被开源平替）是什么？"],
+ },
+ "macro": {
+    "现状定位": ["{t}当前处在什么位置，市场共识预期是什么？", "{t}的关键决定变量有哪些，谁在主导？"],
+    "产能供给": ["{t}的政策/供给侧信号最近怎么变，路径是鹰是鸽？", "{t}相关的资金面/流动性在收还是放？"],
+    "良率技术": ["{t}的传导机制是什么，从政策到资产要几步？", "{t}历史上类似情形怎么演绎的，这次哪里不一样？"],
+    "价格盈利": ["{t}对不同资产（股/债/汇/商品）的影响方向和幅度？", "{t}兑现或证伪，哪些板块受益、哪些受损？"],
+    "竞争格局": ["{t}下资金会往哪些方向轮动，谁是最大受益方？", "{t}的一致预期打得有多满，预期差在哪？"],
+    "边际变化": ["{t}最近的边际变化（数据、表态、盘面）指向什么？", "{t}的定价充分了吗，市场是抢跑还是滞后？"],
+    "证伪风险": ["什么数据/事件出现会证伪{t}的当前判断？", "{t}的尾部风险和最坏情形是什么？"],
+ },
+ "company": {
+    "现状定位": ["{t}是做什么的，主营构成和当前营收规模多少？", "{t}在产业链的位置和核心竞争力是什么？"],
+    "产能供给": ["{t}的产能/产量/出货最近趋势，有没有扩产或瓶颈？", "{t}的订单能见度和交付节奏如何？"],
+    "良率技术": ["{t}的技术/良率/产品迭代进展，相比对手领先还是落后？", "{t}有没有新产品/新客户带来结构性增量？"],
+    "价格盈利": ["{t}的价格趋势、毛利率变化和盈利弹性如何？", "{t}的业绩预期，市场一致预测是多少、有没有预期差？"],
+    "竞争格局": ["{t}的市场份额、主要对手和客户绑定深度？", "{t}相比同业，估值贵还是便宜，凭什么？"],
+    "边际变化": ["{t}最近一季度的边际变化（订单/价格/份额）？", "{t}股价隐含了什么预期，兑现还是证伪临近？"],
+    "证伪风险": ["什么信号说明{t}的逻辑破了？列出下车信号。", "{t}最大的风险（丢单、降价、技术替代）是什么？"],
+ },
+}
+GENERIC_OPENERS = GENERIC_BY_TYPE["industry"]   # 兼容旧引用
 
 def _clean_q(q):
     q = re.sub(r"^\s*[\d一二三四五六七八九十]+[、\.\,，\)）\s]*", "", q.strip())
@@ -284,11 +412,20 @@ def inquiry_for(theme, per_layer=3):
     """给一个话题，返回分层的真实专家问题 + 一句起手提示。
     只有相关性达标（>=4）的真问题才算切题，不硬塞无关问题误导老板。"""
     idx = _load_index()
-    scored = []
-    for e in idx["entries"]:
-        r = _relevance(theme, e)
-        if r >= 4:
-            scored.append((r, e))
+    ttype = _topic_type(theme)
+    # 宏观话题：本地语料是产业调研纪要，无宏观问答，硬匹配会串味 → 直接走宏观起手式
+    if ttype == "macro":
+        scored = []
+    else:
+        expand_terms = TOPIC_EXPAND.get(theme, [])
+        scored = []
+        for e in idx["entries"]:
+            r = _relevance(theme, e)
+            for ex in expand_terms:
+                if ex in (e["q"] + e["title"]):
+                    r += 3
+            if r >= 4:
+                scored.append((r, e))
     scored.sort(key=lambda x: -x[0])
     layers = {name: [] for name, _ in LAYER_RULES}
     for ov, e in scored:
@@ -298,7 +435,8 @@ def inquiry_for(theme, per_layer=3):
     # 话题太新、语料里专家还没怎么问过 → 给「万能起手七问」，且诚实标明这是通用式
     thin = sum(len(v) for v in layers.values()) < 6
     if thin:
-        for name, qs in GENERIC_OPENERS.items():
+        openers = GENERIC_BY_TYPE.get(ttype, GENERIC_BY_TYPE["industry"])
+        for name, qs in openers.items():
             have = {x["q"] for x in layers[name]}
             for q in qs:
                 if len(layers[name]) >= per_layer:

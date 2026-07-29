@@ -41,11 +41,11 @@ async function renderInsightFeed(mount){
     d.items.map((it, i)=>`
       <div class="gap-item" style="margin-bottom:7px">
         <div class="gt">
-          <b style="flex:1;font-size:13px">${it.theme}</b>
+          <b style="flex:1;font-size:13px;color:#b8791b">#${it.theme}</b>
           <span title="热度">${'🔥'.repeat(it.heat||1)}</span>
           ${infoDot(it.method || '')}
         </div>
-        ${it.topic?`<div class="why" style="color:var(--dim)">引子：${it.topic}</div>`:''}
+        ${it.topic?`<div class="why" style="color:var(--ink);font-weight:700">${it.topic}</div>`:''}
         ${it.src?`<div class="t-xs" style="color:var(--dim);font-weight:700;margin-top:2px">源：${it.src}${it.vol?' · $'+it.vol+'M':''}</div>`:''}
         <div class="row" style="gap:4px;margin-top:4px">
           <button class="px-btn sm" data-ins-go="${it.theme}">▸ 立课题</button>
