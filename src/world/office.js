@@ -114,14 +114,16 @@ function officeRoom(){
           label:'书架 · 知识库', paint:paintBookshelf});
   F.push({id:'boss_desk',   tx:5,  ty:6, tw:4, th:2, comp:'research',
           label:'办公桌 · 研究台', paint:paintBossDesk});
-  /* 工位区：4 桌 + 总热点 */
+  /* 工位区：每人一桌一热点 → 个人工作看板 */
   const staffWho = ['serenity','tech','quant','growth'];
+  const staffName = {serenity:'Serenity', tech:'科技研究员', quant:'量化研究员', growth:'成长股研究员'};
   [[15,5],[20,5],[15,8],[20,8]].forEach(([tx,ty],i)=>{
-    F.push({id:'staff'+i, tx, ty, tw:3, th:2,
-            paint:(ctx,x,y)=> paintStaffDesk(ctx, x, y, staffWho[i])});
+    const who = staffWho[i];
+    F.push({id:'staff_'+who, tx, ty, tw:3, th:2, comp:'desk',
+            label:staffName[who] + ' 的工位',
+            onUse:()=> openResearcherPanel(who),
+            paint:(ctx,x,y)=> paintStaffDesk(ctx, x, y, who)});
   });
-  F.push({id:'staff_area', tx:18, ty:6, tw:2, th:2, solid:false, comp:'desk',
-          label:'工位区 · 研究员'});
   F.push({id:'coffee',      tx:24, ty:5, tw:1, th:2, comp:'daily',
           label:'咖啡机 · 老板日报', paint:paintCoffee});
   F.push({id:'trade_desk',  tx:4,  ty:11, tw:4, th:2, comp:'trading',

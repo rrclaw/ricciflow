@@ -258,11 +258,11 @@ const CITY = {
     {isl:'lujiazui', id:'broker', n:'中银河证券', ix:12.8, iy:4.6, style:'tower', h:76, c:'#c98a5a',
      sign:['中银河证券'], label:'券商楼 · 集合出差调研', use:()=> startFieldTrip && startFieldTrip()},
     {isl:'lujiazui', id:'rest', n:'聚贤楼', ix:1.6, iy:8.8, style:'shop', c:'#b5495b', sign:['聚贤楼'],
-     label:'聚贤楼饭店 · 开饭局', use:()=> startVenueDinner('rest')},
+     label:'聚贤楼饭店 · 进去看看', use:()=> visitVenue('rest')},
     {isl:'lujiazui', id:'tea', n:'拾露茶室', ix:4.4, iy:8.8, style:'shop', c:'#4f8a72', sign:['拾露茶室'],
-     label:'拾露茶室 · 开饭局', use:()=> startVenueDinner('tea')},
+     label:'拾露茶室 · 进去看看', use:()=> visitVenue('tea')},
     {isl:'lujiazui', id:'ktv', n:'夜莺会所', ix:7.2, iy:8.8, style:'shop', c:'#7b4a9c', sign:['夜莺会所'],
-     label:'夜莺会所(商K) · 开饭局', use:()=> startVenueDinner('ktv')},
+     label:'夜莺会所(商K) · 进去看看', use:()=> visitVenue('ktv')},
     {isl:'lujiazui', id:'hotel', n:'金陆大酒店', ix:10.0, iy:8.6, style:'hotel', sign:['金陆大酒店 ★★★★★'],
      label:'五星酒店 · 上市公司策略会', use:()=> startStrategyMeet && startStrategyMeet()},
     {isl:'lujiazui', id:'campus', n:'X 公司产业园', ix:13.0, iy:8.6, style:'campus', sign:['X 公司产业园'],
@@ -505,4 +505,87 @@ function dispatchAbroad(firm){
     }[firm];
     pushDaily('intel', `外出情报 · ${firm}：${intel}（★★ 需交叉验证）`);
   }, 9000);
+}
+
+/* ==========================================================================
+   场所内景：茶室 / 饭店 / 商K —— 走进去能看到研究员在聊
+   ========================================================================== */
+const VENUE_DECOR = {
+  rest:{n:'聚贤楼（饭店）', accent:'#b5495b', floor:'#8a5a35',
+    chat:[
+      ['tech','这轮存储涨价，模组厂嘴上喊苦，手上都在囤货'],
+      ['guest','某大厂采购说 Q4 长约价还要谈一轮'],
+      ['growth','别聊了先点菜，等会儿他们喝多了才有真话'],
+      ['guest','听说你们老板拿原则闸拦自己追高？狠人']]},
+  tea:{n:'拾露茶室', accent:'#4f8a72', floor:'#9a8a6a',
+    chat:[
+      ['serenity','茶室聊的都能上纪要，商 K 聊的只能上心'],
+      ['macro','供给收缩型涨价，久期比大家想的短'],
+      ['guest','你们那个像素办公室是怎么回事，全陆家嘴都在传'],
+      ['serenity','绕不开的地方才有钱赚。续杯']]},
+  ktv:{n:'夜莺会所（商K）', accent:'#7b4a9c', floor:'#4a3a5c',
+    chat:[
+      ['guest','（三杯之后）跟你说个大的……某 CSP 在东南亚偷偷谈电力'],
+      ['growth','唱歌唱歌，谁再聊排产谁买单'],
+      ['guest','那个……你们量化研究员，城堡真的开了 3.2 倍'],
+      ['tech','这句我记下了（掏出手机）']]}
+};
+
+function venueRoom(key){
+  const V = VENUE_DECOR[key];
+  const seats = [[3,4],[7,4],[5,6],[9,6]];
+  const who = key === 'tea' ? ['serenity','macro','guest','guest']
+            : key === 'rest' ? ['tech','growth','guest','guest']
+            : ['growth','tech','guest','guest'];
+  const F = [];
+  F.push({id:'join', tx:5, ty:2, tw:3, th:1, solid:false,
+    label:'入席 · 正式开一局饭局', onUse:()=> startVenueDinner(key)});
+  const room = makeRoom({
+    gw:13, gh:9, wallRows:2, furniture:F,
+    paintBase:(ctx, hour)=>{
+      /* 店招 */
+      ctx.fillStyle = W_PAL.ink; ctx.fillRect(3*TILE, 6, 7*TILE, 26);
+      ctx.fillStyle = V.accent; ctx.fillRect(3*TILE + 3, 9, 7*TILE - 6, 20);
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 12px monospace';
+      ctx.textAlign = 'center'; ctx.fillText(V.n, 6.5*TILE, 23); ctx.textAlign = 'left';
+      paintWindow(ctx, 10.6*TILE, TILE - 8, 2*TILE, TILE + 12, hour);
+      /* 桌椅 + 坐着的人 */
+      seats.forEach(([tx, ty], i)=>{
+        const x = tx*TILE, y = ty*TILE;
+        ctx.fillStyle = W_PAL.ink; ctx.fillRect(x - 4, y + 16, 56, 22);
+        ctx.fillStyle = key === 'ktv' ? '#5c4a72' : '#9a6a3f';
+        ctx.fillRect(x - 1, y + 19, 50, 16);
+        ctx.fillStyle = V.accent; ctx.fillRect(x + 16, y + 22, 16, 8);   /* 桌上小物 */
+        drawSpriteOn(ctx, who[i], x + 6, y - 10, 2);
+      });
+      paintPlant(ctx, TILE - 8, 6*TILE, 0);
+      /* 出口垫 */
+      ctx.fillStyle = W_PAL.mustard; ctx.fillRect(5.6*TILE, 8*TILE + 16, 60, 8);
+      ctx.fillStyle = W_PAL.ink; ctx.font = 'bold 8px monospace';
+      ctx.fillText('EXIT → 街上', 5.7*TILE, 8*TILE + 12);
+    },
+    paintDynamic:(ctx, now)=>{
+      /* 八卦气泡轮播：谁在说话，泡在谁头上 */
+      const idx = Math.floor(now / 3000) % V.chat.length;
+      const [speaker, line] = V.chat[idx];
+      const si = who.indexOf(speaker) >= 0 ? who.indexOf(speaker) : idx % seats.length;
+      const [tx, ty] = seats[si];
+      const bx = tx*TILE + 20, by = ty*TILE - 26;
+      const w = Math.min(300, line.length * 11 + 16);
+      ctx.fillStyle = W_PAL.ink; ctx.fillRect(bx - 2, by - 2, w + 4, 22);
+      ctx.fillStyle = '#fff8e8'; ctx.fillRect(bx, by, w, 18);
+      ctx.fillStyle = W_PAL.ink; ctx.font = 'bold 10px monospace';
+      ctx.fillText(line, bx + 6, by + 13, w - 10);
+      /* 小尾巴 */
+      ctx.fillStyle = '#fff8e8'; ctx.fillRect(bx + 12, by + 18, 6, 6);
+    },
+    onStep:(tx, ty)=>{ if(ty >= 8) enterCity(); }
+  });
+  return room;
+}
+
+function visitVenue(key){
+  enterRoom(venueRoom(key), 6, 7);
+  setLocation('venue:' + key, VENUE_DECOR[key].n + ' · 听墙角中');
+  toast('研究员在聊。想正式开局就走到吧台按 E');
 }

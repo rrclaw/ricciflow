@@ -234,6 +234,34 @@ async def main():
         await page.click('[data-decor="daily"]'); await page.wait_for_timeout(200)
         await page.click("#panelClose")
 
+        # ---------- 真交互：相机 / 工位看板 / 场所内景 ----------
+        await page.evaluate("enterCity()"); await page.wait_for_timeout(500)
+        z0 = await page.evaluate("CAM.zoom")
+        await page.mouse.move(750, 480); await page.mouse.wheel(0, -400)
+        await page.wait_for_timeout(200)
+        check(await page.evaluate("CAM.zoom") > z0, "滚轮缩放生效")
+        c0 = await page.evaluate("[CAM.px, CAM.py]")
+        await page.mouse.move(700, 400); await page.mouse.down()
+        await page.mouse.move(520, 320, steps=6); await page.mouse.up()
+        check(await page.evaluate("[CAM.px, CAM.py]") != c0, "拖拽平移生效")
+        pc0 = await page.evaluate("[WALK.x, WALK.y]")
+        await page.keyboard.down("d"); await page.wait_for_timeout(400); await page.keyboard.up("d")
+        check(await page.evaluate("[WALK.x, WALK.y]") != pc0, "世界地图上老板能走动")
+        await page.evaluate("visitVenue('tea')"); await page.wait_for_timeout(600)
+        check("茶室" in await page.inner_text("#tbLoc"), "茶室内景可进（研究员在聊八卦）")
+        check(await page.evaluate("WALK.room.furniture.filter(f=>f.label).length") >= 1, "内景有入席热点")
+        await page.evaluate("startOffice()"); await page.wait_for_timeout(400)
+        check(await page.evaluate("WALK.room.furniture.filter(f=>f.label && f.label.includes('工位')).length") == 4,
+              "四个研究员工位独立热点")
+        await page.evaluate("openResearcherPanel('serenity')"); await page.wait_for_timeout(400)
+        check("个人工作看板" in await page.inner_text("#panelTitle"), "工位打开个人看板")
+        check(await page.eval_on_selector_all("[data-report]", "e=>e.length") >= 3, "个人历史报告 >= 3")
+        pb = await page.inner_text("#say-serenity")
+        await page.eval_on_selector('#panelBody input[data-k="aggr"]',
+                                    "el=>{el.value=9; el.dispatchEvent(new Event('input'))}")
+        check(await page.inner_text("#say-serenity") != pb, "看板里拖滑块当场改口")
+        await page.evaluate("closePanel()")
+
         # ---------- PWA / 收尾 ----------
         mf = await page.evaluate("fetch('manifest.webmanifest').then(r=>r.status)")
         check(mf == 200, "PWA manifest 可达")

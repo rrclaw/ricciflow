@@ -393,3 +393,140 @@ function dispatchTask(researcherId, text){
   return r;
 }
 
+
+/* ==========================================================================
+   个人工作看板（走到工位按 E 触发）
+   模拟组合 / 历史报告 / 性格现调 / 收件箱 / 派遣
+   ========================================================================== */
+DATA.reports = {
+  serenity: [
+    {t:'07-24', title:'光刻胶窄口论文（反路演后降级版）', score:82, tag:'深研'},
+    {t:'07-11', title:'混合键合：被低估的窄口候选', score:76, tag:'快研'},
+    {t:'06-28', title:'电子特气寡头格局：验证周期即护城河', score:88, tag:'深研'}],
+  tech: [
+    {t:'07-27', title:'存储涨价二阶导监测（周更 #6）', score:79, tag:'跟踪'},
+    {t:'07-18', title:'HBM4 良率爬坡分化：三家原厂拆解', score:85, tag:'深研'},
+    {t:'07-02', title:'液冷渗透率：从可选到必选的拐点估计', score:73, tag:'快研'}],
+  quant: [
+    {t:'07-25', title:'涨价主题因子 IC 衰减监测', score:81, tag:'跟踪'},
+    {t:'07-08', title:'机构搜索热度因子 V2.8 复核', score:90, tag:'深研'}],
+  growth: [
+    {t:'07-26', title:'材料端小盘动量筛（周更）', score:70, tag:'跟踪'},
+    {t:'07-15', title:'横截面加速度：谁在被买爆', score:74, tag:'快研'}],
+  macro: [
+    {t:'07-21', title:'供给收缩型涨价的久期问题', score:77, tag:'快研'}],
+  oldmoney: [
+    {t:'07-19', title:'涨价链现金流体检：谁把钱分给了股东', score:86, tag:'深研'}],
+  consume: [
+    {t:'07-10', title:'渠道被动补库监测（PIP 观察期作业）', score:58, tag:'跟踪'}]
+};
+
+function openResearcherPanel(id){
+  const r = DATA.researchers.find(x=>x.id === id);
+  if(!r) return;
+  if(r.gone) return toast(r.n + ' 已离职。工位还空着，像个提醒');
+  const rv = DATA.reviews[r.id] || {};
+  PANEL_OPEN = 'r:' + id;
+  $('#panelTitle').textContent = r.n + ' · 个人工作看板';
+  $('#panelBar').style.background = 'var(--teal)';
+  const nav = (typeof rNavSeries === 'function' && !r.veto) ? rNavSeries(id) : null;
+  const reports = DATA.reports[id] || [];
+  $('#panelBody').innerHTML = `
+    <section class="screen active">
+      <div style="display:grid;grid-template-columns:360px 1fr;gap:12px;align-items:start">
+        <div class="col">
+          ${win('灵魂 · 老板可现调', `
+            <div class="row" style="margin-bottom:9px">${avatarHTML(r.sp,'s5')}
+              <div><b style="font-size:14px">${r.n}</b> ${r.veto?'<span class="tag rose">VETO</span>':''}
+                <div class="rproto">${r.proto}</div>
+                <div class="row" style="gap:4px;margin-top:4px">
+                  <span class="tag ${rv.rank<=3?'gold':''}">考核 #${rv.rank||'-'}</span>
+                  ${rv.pip?'<span class="tag rose">PIP</span>':''}
+                  <span class="tag">${rv.status||'在岗'}</span>
+                </div></div></div>
+            <div class="motto">「${r.motto}」</div>
+            <div class="sliders" data-r="${r.id}" style="margin-top:9px">
+              <div class="sld"><span class="lo">保守</span><input type="range" min="1" max="10" value="${r.aggr}" data-k="aggr"><span class="hi">激进</span></div>
+              <div class="sld"><span class="lo">随大流</span><input type="range" min="1" max="10" value="${r.indep}" data-k="indep"><span class="hi">独立</span></div>
+              <div class="sld"><span class="lo">短线</span><input type="range" min="1" max="10" value="${r.horizon}" data-k="horizon"><span class="hi">长线</span></div>
+            </div>
+            <div class="cap" style="margin:4px 0">对今日议题的发言（拖滑块看他改口）</div>
+            <div class="saybox" id="say-${r.id}">${sayOf(r)}</div>
+            <div class="cap" style="margin:8px 0 4px">关注因子</div>
+            <div class="chips">${r.factors.map((f,i)=>`<span class="chip ${i<3?'on':''}">${f}</span>`).join('')}</div>`,
+            {color:'pink'})}
+          ${win('任务收件箱', `
+            <div id="inbox-${r.id}">
+              ${(r.inbox && r.inbox.length)
+                ? r.inbox.map(t=>`<span class="taskchip">▸ ${t}</span>`).join('')
+                : '<div class="t-xs t-dim" style="font-weight:700">空 · 知识库缺口和老板投稿都会派到这里</div>'}
+            </div>
+            <div class="row" style="gap:6px;margin-top:9px">
+              ${!r.veto && (rv.status === '在岗') ? `<button class="px-btn sm" data-fieldtrip="${r.id}">派出去调研</button>` : ''}
+              <button class="px-btn sm ghost" id="gotoRoster">打开研究员名册</button>
+            </div>`, {color:'mustard'})}
+        </div>
+        <div class="col">
+          ${r.veto
+            ? win('风控官不持仓', '<div class="t-sm" style="font-weight:700;line-height:1.8">他的 KPI 是别人少亏的钱。三道闸的判定记录见交易台 blotter。</div>', {color:'coral'})
+            : win('模拟组合', `
+              <div class="row"><span class="cap">30 日纸面 NAV</span><span class="demo-mark">编造值</span>
+                <span class="sp"></span><b style="font-size:15px">${nav ? nav[nav.length-1].toFixed(1) : '—'}</b></div>
+              <div style="margin-top:8px">${nav && typeof sparkHTML === 'function' ? sparkHTML(nav, 560, 96, rv.pip ? 'var(--coral)' : 'var(--teal)') : ''}</div>
+              <div class="stat3" style="max-width:340px;margin-top:9px">
+                <div><div class="k">命中</div><div class="v">${rv.hit ?? '—'}</div></div>
+                <div><div class="k">贡献</div><div class="v">${rv.contrib ?? '—'}</div></div>
+                <div><div class="k">纪律</div><div class="v">${rv.disc ?? '—'}</div></div>
+              </div>`, {color:'teal', sub:'他的仓位不是公司的仓位——考核用'})}
+          ${win('历史报告', reports.length ? reports.map((rp,i)=>`
+            <div class="gap-item" style="cursor:pointer" data-report="${id}|${i}">
+              <div class="gt"><span class="tag ${rp.score>=85?'gold':rp.score>=75?'cyan':''}">${rp.score} 分</span>
+                <span>${rp.title}</span></div>
+              <div class="why">${rp.t} · ${rp.tag} · report-scorer 评分 · 点开看摘要</div>
+            </div>`).join('') : '<div class="t-xs t-dim" style="font-weight:700">还没有产出。新员工或者该谈话了。</div>',
+            {color:'sky', sub:'公司资产，跳槽带不走'})}
+        </div>
+      </div>
+      <div class="panel-foot"><span class="demo-mark">DEMO</span> 战绩与报告评分为编造值。
+        <span class="sp"></span><span>里奇流资本 · 曲率即命运</span></div>
+    </section>`;
+  $('#panel').classList.add('open');
+  $('#panelScrim').classList.add('open');
+  walkPause(true);
+  /* 绑定 */
+  $$('#panelBody .sliders input').forEach(inp=> inp.oninput = ()=>{
+    r[inp.dataset.k] = +inp.value;
+    $('#say-' + r.id).innerHTML = sayOf(r);
+  });
+  $$('#panelBody .chip').forEach(c=> c.onclick = ()=> c.classList.toggle('on'));
+  $$('#panelBody [data-fieldtrip]').forEach(b=> b.onclick = ()=>{
+    DATA.reviews[r.id].status = '外出调研';
+    toast(r.n + ' 已出门。情报会回流老板日报');
+    closePanel();
+    setTimeout(()=>{
+      DATA.reviews[r.id].status = '在岗';
+      if(typeof pushDaily === 'function')
+        pushDaily('intel', `外出情报：${r.n} 带回「某上市公司产线满负荷，Q3 排产比较满」（★★ 需交叉）`);
+    }, 8000);
+  });
+  const gr = $('#gotoRoster'); if(gr) gr.onclick = ()=> openComponent('desk');
+  $$('#panelBody [data-report]').forEach(el2=> el2.onclick = ()=>{
+    const [rid, idx] = el2.dataset.report.split('|');
+    const rp = DATA.reports[rid][+idx];
+    openModal(`
+      <div class="win-bar" style="background:var(--sky)"><span>${rp.title}</span>
+        <span class="dots" id="mClose" style="cursor:pointer">_ □ ×</span></div>
+      <div style="padding:13px">
+        <div class="row" style="margin-bottom:8px">
+          <span class="tag gold">${rp.score} 分</span><span class="tag">${rp.tag}</span>
+          <span class="t-xs t-dim" style="font-weight:700">${rp.t} · ${r.n}</span></div>
+        <div class="minutes" style="font-size:10px">
+          <h4>摘要（demo 占位）</h4>
+          <div class="sec">完整报告在投产阶段接 deep-report 管线与云盘归档。此处演示：报告是<b>公司资产</b>，
+          挂在研究员名下、按 report-scorer 评分进考核，人走了报告留下。</div>
+          <div class="sec"><span class="k">下车信号</span> 每篇报告强制携带，跟踪组件自动盯。</div>
+        </div>
+      </div>`);
+    $('#mClose').onclick = closeModal;
+  });
+}

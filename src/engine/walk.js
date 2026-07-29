@@ -1,4 +1,5 @@
-/* ricciflow — 行走引擎：老板小人 + 输入 + 碰撞 + 家具交互
+/* ricciflow — 行走引擎 + 相机
+   相机：滚轮缩放（围绕光标）、拖拽平移（>6px 判定为拖，否则是点击走路）。
    不做寻路：点击走动 = 轴优先直线逼近，撞墙就停。 */
 
 const WALK = {
@@ -8,39 +9,113 @@ const WALK = {
   nearFurn: null, hour: new Date().getHours(),
   raf: null, plantFrame: 0, lastBaseAt: 0
 };
-const BOSS_PX = 2;              /* 老板 sprite 放大倍数: 16×20 → 32×40 */
+const CAM = { zoom: 1, fit: 1, px: 0, py: 0, minZ: .6, maxZ: 2.6 };
+const BOSS_PX = 2;
 const SPEED = 2.4;
 
 const worldCanvas = $('#world');
 const wctx = worldCanvas.getContext('2d');
-wctx.imageSmoothingEnabled = false;
 
 function walkPause(v){ WALK.paused = v; WALK.keys = {}; WALK.target = null; }
 
+/* 找最近可站立点（出生点掉进碰撞体时向外螺旋搜） */
+function nearestOpen(tx, ty){
+  const r = WALK.room;
+  for(let rad = 0; rad < 12; rad++)
+    for(let dy = -rad; dy <= rad; dy++)
+      for(let dx = -rad; dx <= rad; dx++){
+        const x = tx + dx, y = ty + dy;
+        if(x < 0 || y < 0 || x >= r.gw || y >= r.gh) continue;
+        if(!r.solid[y][x]) return [x, y];
+      }
+  return [tx, ty];
+}
+
 function enterRoom(room, spawnTx, spawnTy){
   WALK.room = room;
-  WALK.x = spawnTx * TILE + TILE/2;
-  WALK.y = spawnTy * TILE + TILE/2;
+  const [sx, sy] = (()=>{ WALK.room = room; return nearestOpen(spawnTx, spawnTy); })();
+  WALK.x = sx * TILE + TILE/2;
+  WALK.y = sy * TILE + TILE/2;
   WALK.dir = 'up'; WALK.target = null;
   WALK.base = renderRoomBase(room, WALK.hour, 0);
   WALK.lastBaseAt = performance.now();
+  fitCanvas();
   if(!WALK.raf) loop();
 }
 
-/* 画布随窗口自适应：内部分辨率=房间原生，CSS 拉伸保持像素 */
+/* 画布=视口；相机变换画世界 */
 function fitCanvas(){
   if(!WALK.room) return;
-  worldCanvas.width = WALK.room.W; worldCanvas.height = WALK.room.H;
+  worldCanvas.width = innerWidth; worldCanvas.height = innerHeight;
+  worldCanvas.style.width = '100vw'; worldCanvas.style.height = '100vh';
+  worldCanvas.style.left = '0'; worldCanvas.style.top = '0';
   wctx.imageSmoothingEnabled = false;
-  const availH = innerHeight, availW = innerWidth;
-  const scale = Math.min(availW / WALK.room.W, availH / WALK.room.H);
-  worldCanvas.style.width  = Math.round(WALK.room.W * scale) + 'px';
-  worldCanvas.style.height = Math.round(WALK.room.H * scale) + 'px';
-  worldCanvas.style.position = 'fixed';
-  worldCanvas.style.left = Math.round((availW - WALK.room.W * scale)/2) + 'px';
-  worldCanvas.style.top  = Math.round((availH - WALK.room.H * scale)/2) + 'px';
+  CAM.fit = Math.min(innerWidth / WALK.room.W, innerHeight / WALK.room.H);
+  CAM.zoom = 1;
+  centerCam();
+}
+function centerCam(){
+  const s = CAM.fit * CAM.zoom;
+  CAM.px = (innerWidth - WALK.room.W * s) / 2;
+  CAM.py = (innerHeight - WALK.room.H * s) / 2;
+}
+function clampCam(){
+  const s = CAM.fit * CAM.zoom;
+  const w = WALK.room.W * s, h = WALK.room.H * s;
+  if(w <= innerWidth) CAM.px = (innerWidth - w) / 2;
+  else CAM.px = clamp(CAM.px, innerWidth - w - 80, 80);
+  if(h <= innerHeight) CAM.py = (innerHeight - h) / 2;
+  else CAM.py = clamp(CAM.py, innerHeight - h - 80, 80);
+}
+function toWorld(cx, cy){
+  const s = CAM.fit * CAM.zoom;
+  return [(cx - CAM.px) / s, (cy - CAM.py) / s];
 }
 addEventListener('resize', fitCanvas);
+
+/* 滚轮缩放（围绕光标点） */
+worldCanvas.addEventListener('wheel', e=>{
+  if(!WALK.room || WALK.paused) return;
+  e.preventDefault();
+  const [wx, wy] = toWorld(e.clientX, e.clientY);
+  const f = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+  CAM.zoom = clamp(CAM.zoom * f, CAM.minZ, CAM.maxZ);
+  const s = CAM.fit * CAM.zoom;
+  CAM.px = e.clientX - wx * s;
+  CAM.py = e.clientY - wy * s;
+  clampCam();
+}, {passive:false});
+
+/* 拖拽平移 vs 点击走路 */
+const DRAG = { on:false, moved:false, sx:0, sy:0, opx:0, opy:0 };
+worldCanvas.addEventListener('mousedown', e=>{
+  if(!WALK.room || WALK.paused) return;
+  DRAG.on = true; DRAG.moved = false;
+  DRAG.sx = e.clientX; DRAG.sy = e.clientY;
+  DRAG.opx = CAM.px; DRAG.opy = CAM.py;
+});
+addEventListener('mousemove', e=>{
+  if(!DRAG.on) return;
+  const dx = e.clientX - DRAG.sx, dy = e.clientY - DRAG.sy;
+  if(Math.abs(dx) + Math.abs(dy) > 6) DRAG.moved = true;
+  if(DRAG.moved){
+    CAM.px = DRAG.opx + dx; CAM.py = DRAG.opy + dy;
+    clampCam();
+  }
+});
+addEventListener('mouseup', e=>{
+  if(!DRAG.on) return;
+  DRAG.on = false;
+  if(DRAG.moved || !WALK.room || WALK.paused || !GAME.guideDone) return;
+  /* 是点击：走路 / 触发家具 */
+  const [mx, my] = toWorld(e.clientX, e.clientY);
+  if(mx < 0 || my < 0 || mx > WALK.room.W || my > WALK.room.H) return;
+  const f = furnitureAtPoint(mx, my);
+  if(f && dist(WALK.x, WALK.y, fCenter(f).x, fCenter(f).y) < TILE * 3.2){
+    triggerFurniture(f); return;
+  }
+  WALK.target = {x: mx, y: my, furn: f || null};
+});
 
 function solidAt(px, py){
   const r = WALK.room;
@@ -48,17 +123,14 @@ function solidAt(px, py){
   if(tx < 0 || ty < 0 || tx >= r.gw || ty >= r.gh) return true;
   return r.solid[ty][tx];
 }
-/* 脚底碰撞盒：细腰，方便过门 */
 function canStand(x, y){
   return !solidAt(x - 9, y) && !solidAt(x + 9, y) && !solidAt(x, y - 4) && !solidAt(x, y + 6);
 }
-
 function tryMove(dx, dy){
   if(dx){ const nx = WALK.x + dx; if(canStand(nx, WALK.y)) WALK.x = nx; }
   if(dy){ const ny = WALK.y + dy; if(canStand(WALK.x, ny)) WALK.y = ny; }
 }
 
-/* ---------- 输入 ---------- */
 addEventListener('keydown', e=>{
   if(WALK.paused || !GAME.guideDone) return;
   const k = e.key.toLowerCase();
@@ -66,21 +138,9 @@ addEventListener('keydown', e=>{
     WALK.keys[k] = true; WALK.target = null; e.preventDefault();
   }
   if(k === 'e' && WALK.nearFurn) triggerFurniture(WALK.nearFurn);
+  if(k === '0'){ CAM.zoom = 1; centerCam(); }        /* 归位 */
 });
 addEventListener('keyup', e=>{ delete WALK.keys[e.key.toLowerCase()]; });
-
-worldCanvas.addEventListener('click', e=>{
-  if(WALK.paused || !GAME.guideDone || !WALK.room) return;
-  const r = worldCanvas.getBoundingClientRect();
-  const sx = WALK.room.W / r.width;
-  const mx = (e.clientX - r.left) * sx, my = (e.clientY - r.top) * sx;
-  /* 点在家具上且在附近 → 直接触发 */
-  const f = furnitureAtPoint(mx, my);
-  if(f && dist(WALK.x, WALK.y, fCenter(f).x, fCenter(f).y) < TILE * 2.6){
-    triggerFurniture(f); return;
-  }
-  WALK.target = {x: mx, y: my, furn: f || null};
-});
 
 function dist(a,b,c,d){ return Math.hypot(a-c, b-d); }
 function fCenter(f){
@@ -91,7 +151,6 @@ function furnitureAtPoint(px, py){
     px >= f.tx*TILE && px < (f.tx + (f.tw||1))*TILE &&
     py >= f.ty*TILE && py < (f.ty + (f.th||1))*TILE && f.label);
 }
-
 function triggerFurniture(f){
   if(f.onUse) f.onUse(f);
   else if(f.comp) openComponent(f.comp);
@@ -101,8 +160,6 @@ function triggerFurniture(f){
 function loop(){
   WALK.raf = requestAnimationFrame(loop);
   const now = performance.now();
-
-  /* 每 4 秒重渲底图：盆栽两帧摆动 + 窗色跟真实时间 */
   if(now - WALK.lastBaseAt > 4000){
     WALK.plantFrame = 1 - WALK.plantFrame;
     WALK.hour = new Date().getHours();
@@ -130,7 +187,7 @@ function loop(){
   if(mvx || mvy){
     const ox = WALK.x, oy = WALK.y;
     tryMove(mvx, 0); tryMove(0, mvy);
-    if(WALK.x === ox && WALK.y === oy && WALK.target) WALK.target = null;  /* 卡住放弃 */
+    if(WALK.x === ox && WALK.y === oy && WALK.target) WALK.target = null;
     WALK.dir = Math.abs(mvx) >= Math.abs(mvy)
       ? (mvx < 0 ? 'left' : mvx > 0 ? 'right' : WALK.dir)
       : (mvy < 0 ? 'up' : 'down');
@@ -138,7 +195,6 @@ function loop(){
     if(WALK.animT % 9 === 0) WALK.frame = 1 - WALK.frame;
   } else WALK.frame = 0;
 
-  /* 家具接近检测 */
   let near = null, bestD = TILE * 2.4;
   (WALK.room.furniture || []).forEach(f=>{
     if(!f.label) return;
@@ -148,15 +204,18 @@ function loop(){
   WALK.nearFurn = near;
   drawHint(near);
 
-  /* 触发地块（门等） */
   const tx = Math.floor(WALK.x / TILE), ty = Math.floor(WALK.y / TILE);
   if(WALK.room.onStep && !WALK.paused) WALK.room.onStep(tx, ty);
 
-  /* ---------- 绘制 ---------- */
-  wctx.clearRect(0, 0, WALK.room.W, WALK.room.H);
+  /* ---------- 绘制（相机变换） ---------- */
+  const s = CAM.fit * CAM.zoom;
+  wctx.setTransform(1, 0, 0, 1, 0, 0);
+  wctx.fillStyle = W_PAL.bodyBg || '#1c140e';
+  wctx.fillRect(0, 0, worldCanvas.width, worldCanvas.height);
+  wctx.setTransform(s, 0, 0, s, CAM.px, CAM.py);
+  wctx.imageSmoothingEnabled = false;
   wctx.drawImage(WALK.base, 0, 0);
   if(WALK.room.paintDynamic) WALK.room.paintDynamic(wctx, now);
-  /* 影子 + 老板 */
   wctx.fillStyle = W_PAL.shadow;
   wctx.fillRect(WALK.x - 12, WALK.y + 12, 24, 6);
   drawBoss(wctx, WALK.dir, WALK.frame, Math.round(WALK.x - 16), Math.round(WALK.y - 28), BOSS_PX);
@@ -167,8 +226,7 @@ function drawHint(f){
   if(!f || WALK.paused || !GAME.guideDone){ h.style.display = 'none'; return; }
   h.style.display = 'block';
   h.textContent = `[E] ${f.label}`;
-  const r = worldCanvas.getBoundingClientRect();
-  const s = r.width / WALK.room.W;
-  h.style.left = (r.left + ((f.tx + (f.tw||1)/2) * TILE) * s - 40) + 'px';
-  h.style.top  = (r.top + (f.ty * TILE) * s - 30) + 'px';
+  const s = CAM.fit * CAM.zoom;
+  h.style.left = (CAM.px + ((f.tx + (f.tw||1)/2) * TILE) * s - 40) + 'px';
+  h.style.top  = (CAM.py + (f.ty * TILE) * s - 30) + 'px';
 }
