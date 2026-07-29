@@ -275,7 +275,7 @@ const CITY = {
      sign:['SHANGHAI TOWER', '#e8535a', '#fff'], label:'上海中心 · 回楼里', use:()=> enterFloors()},
     {isl:'lujiazui', id:'swfc', n:'环球金融中心', ix:8.4, iy:1.4, style:'swfc', sign:['SWFC']},
     {isl:'lujiazui', id:'jinmao', n:'金茂大厦', ix:12.0, iy:1.8, style:'jinmao', sign:['JIN MAO']},
-    {isl:'lujiazui', id:'broker', n:'中银河证券', ix:12.8, iy:4.6, style:'tower', h:76, c:'#c98a5a',
+    {isl:'lujiazui', id:'broker', n:'中银河证券', ix:12.6, iy:3.8, style:'tower', h:76, c:'#c98a5a',
      sign:['中银河·研报库'], label:'券商大楼 · 研报库 / 组团调研', use:()=> openBrokerTower()},
     {isl:'lujiazui', id:'rest', n:'聚贤楼', ix:1.6, iy:8.8, style:'shop', c:'#b5495b', sign:['聚贤楼'],
      label:'聚贤楼饭店 · 进去看看', use:()=> visitVenue('rest')},
