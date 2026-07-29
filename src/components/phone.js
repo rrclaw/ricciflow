@@ -36,6 +36,13 @@ DATA.phone = {
   ],
   unread: 3
 };
+DATA.agenda = [
+  {time:'08:30', what:'晨会 · 定今日 3 条主线', done:true},
+  {time:'10:00', what:'审 存储外溢深研票（反路演后降级版）', done:false},
+  {time:'14:00', what:'金陆大酒店 · 上市公司策略会', done:false},
+  {time:'16:30', what:'处理量化研究员挖角 offer（48h 倒计时）', done:false},
+  {time:'23:00', what:'晚间复盘 + 明日预案', done:false}
+];
 let PHONE_TAB = 'news';
 let PHONE_THREAD = null;
 
@@ -66,6 +73,15 @@ function renderPhone(){
       <div class="ph-msg ${n.hot ? 'hot' : ''}">
         <div class="ph-meta"><span class="tag ${n.hot ? 'rose' : ''}">${n.src}</span> <span class="t-dim">${n.t}</span></div>
         ${n.txt}</div>`).join('');
+  } else if(PHONE_TAB === 'todo'){
+    // 老板日报 = 等你拍板的事 + 待办 + 日程，从研究台搬来
+    body.innerHTML = (typeof renderDailyItems === 'function'
+      ? '<div class="ph-msg" style="background:var(--cream2)"><b>等你拍板的事</b></div>' + renderDailyItems(false)
+      : '<div class="ph-msg">日报加载中…</div>')
+      + `<div class="ph-msg" style="background:var(--cream2);margin-top:8px"><b>今日日程</b></div>`
+      + DATA.agenda.map(a=>`<div class="ph-msg ${a.done?'':'hot'}">
+          <div class="ph-meta"><span class="tag ${a.done?'':'gold'}">${a.time}</span> ${a.done?'已完成':''}</div>${a.what}</div>`).join('');
+    if(typeof bindDailyItems === 'function') bindDailyItems(body);
   } else if(PHONE_TAB === 'group'){
     body.innerHTML = DATA.phone.group.map(m=>`
       <div class="ph-msg ${m.me ? 'me' : ''}">
@@ -127,6 +143,7 @@ function renderPhone(){
           <span class="dots" id="phClose" style="cursor:pointer">×</span></div>
         <div class="ph-tabs" id="phoneTabs">
           <button class="ph-tab on" data-pt="news">通知</button>
+          <button class="ph-tab" data-pt="todo">待办</button>
           <button class="ph-tab" data-pt="group">公司群</button>
           <button class="ph-tab" data-pt="bosses">老板圈</button>
         </div>

@@ -93,7 +93,7 @@ RENDER.research = function(){
       <h1>研究台 · THE DESK OF THE BOSS</h1>
       <span class="sub">灵感 ▸ 初筛 ▸ 快研 ▸ 深研 ▸ 决策 ▸ 跟踪 —— 你只出题和拍板，中间是 AI 员工的事</span>
     </div>
-    <div style="display:grid;grid-template-columns:280px 1fr 280px;gap:12px;align-items:start">
+    <div style="display:grid;grid-template-columns:300px 1fr;gap:12px;align-items:start">
       <div class="col">
         ${win('灵感流', '<div id="ideaFeed"></div>', {color:'mustard', sub:'今天世界在聊什么'})}
         ${win('投稿箱', `
@@ -113,11 +113,10 @@ RENDER.research = function(){
           {color:'pink', sub:'老板的小道消息也是生产资料'})}
       </div>
       <div>${win('流水线', '<div id="kanban"></div>', {color:'teal', sub:'点票卡进工作台 · 金框 = 完整样例'})}</div>
-      <div class="col" id="dailyRail"></div>
     </div>`;
   if(typeof renderInsightFeed === 'function') renderInsightFeed($('#ideaFeed'));
   else drawIdeas();
-  drawKanban(); drawDailyRail();
+  drawKanban();
   bindSubmit();
 };
 
@@ -208,12 +207,8 @@ function drawKanban(){
 }
 function tk(id){ return DATA.tickets.find(t=>t.id===id); }
 
-/* 右栏：老板日报精简版（与 daily 组件同源） */
-function drawDailyRail(){
-  const rail = $('#dailyRail'); if(!rail) return;
-  rail.innerHTML = win('老板日报', renderDailyItems(true), {color:'sky', sub:'等你拍板的事'}) ;
-  bindDailyItems(rail);
-}
+/* 老板日报已搬到手机（phone.js），研究台不再展示 */
+function drawDailyRail(){ /* moved to phone */ }
 
 /* ==========================================================================
    票工作台
