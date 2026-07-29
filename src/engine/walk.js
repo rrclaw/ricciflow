@@ -117,6 +117,51 @@ addEventListener('mouseup', e=>{
   WALK.target = {x: mx, y: my, furn: f || null};
 });
 
+/* ---------- 触屏：单指拖=平移/点走，双指捏合=缩放 ---------- */
+const TOUCH = { pinch0: 0, zoom0: 1 };
+worldCanvas.addEventListener('touchstart', e=>{
+  if(!WALK.room || WALK.paused) return;
+  if(e.touches.length === 1){
+    const t = e.touches[0];
+    DRAG.on = true; DRAG.moved = false;
+    DRAG.sx = t.clientX; DRAG.sy = t.clientY;
+    DRAG.opx = CAM.px; DRAG.opy = CAM.py;
+  } else if(e.touches.length === 2){
+    DRAG.on = false;
+    TOUCH.pinch0 = Math.hypot(e.touches[0].clientX - e.touches[1].clientX,
+                              e.touches[0].clientY - e.touches[1].clientY);
+    TOUCH.zoom0 = CAM.zoom;
+  }
+}, {passive:true});
+worldCanvas.addEventListener('touchmove', e=>{
+  if(!WALK.room || WALK.paused) return;
+  e.preventDefault();
+  if(e.touches.length === 1 && DRAG.on){
+    const t = e.touches[0];
+    const dx = t.clientX - DRAG.sx, dy = t.clientY - DRAG.sy;
+    if(Math.abs(dx) + Math.abs(dy) > 8) DRAG.moved = true;
+    if(DRAG.moved){ CAM.px = DRAG.opx + dx; CAM.py = DRAG.opy + dy; clampCam(); }
+  } else if(e.touches.length === 2 && TOUCH.pinch0 > 0){
+    const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX,
+                         e.touches[0].clientY - e.touches[1].clientY);
+    CAM.zoom = clamp(TOUCH.zoom0 * d / TOUCH.pinch0, CAM.minZ, CAM.maxZ);
+    clampCam();
+  }
+}, {passive:false});
+worldCanvas.addEventListener('touchend', e=>{
+  if(e.touches.length > 0) return;
+  if(!DRAG.on) return;
+  DRAG.on = false;
+  if(DRAG.moved || !WALK.room || WALK.paused || !GAME.guideDone) return;
+  const [mx, my] = toWorld(DRAG.sx, DRAG.sy);
+  if(mx < 0 || my < 0 || mx > WALK.room.W || my > WALK.room.H) return;
+  const f = furnitureAtPoint(mx, my);
+  if(f && dist(WALK.x, WALK.y, fCenter(f).x, fCenter(f).y) < TILE * 3.2){
+    triggerFurniture(f); return;
+  }
+  WALK.target = {x: mx, y: my, furn: f || null};
+});
+
 function solidAt(px, py){
   const r = WALK.room;
   const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE);
