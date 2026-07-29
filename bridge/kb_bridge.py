@@ -223,6 +223,21 @@ class H(http.server.BaseHTTPRequestHandler):
                 return self._send(200, r)
             except Exception as e:
                 return self._send(200, {"ok": False, "error": str(e)})
+        if u.path == "/api/roster":
+            # 真实研究员名册：人设引自 doctrine 原文，战绩来自平仓账本与 playbookex
+            try:
+                import real
+                return self._send(200, real.roster(
+                    with_series=(q.get("series") or ["0"])[0] == "1"))
+            except Exception as e:
+                return self._send(200, {"ok": False, "error": str(e)})
+        if u.path == "/api/finance":
+            # 真实薪资：扫 ~/.claude/projects 的 usage，按项目目录归属到研究员
+            try:
+                import real
+                return self._send(200, real.finance())
+            except Exception as e:
+                return self._send(200, {"ok": False, "error": str(e)})
         if u.path == "/api/buildings":
             inv = {}
             for d in DOCS.values():

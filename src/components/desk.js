@@ -121,14 +121,19 @@ RENDER.desk = function(){
   scr.innerHTML = `
     <div class="screen-head">
       <h1>THE DESK</h1>
-      <span class="sub">研究员 · 拧滑块就换方法论，发言实时变</span>
+      <span class="sub">${typeof REAL !== 'undefined' && REAL.on
+        ? '每个研究员都是一套真在跑的策略 · 人设引自各自 doctrine 原文'
+        : '研究员 · 拧滑块就换方法论，发言实时变'}</span>
       <div class="tools">
+        ${typeof realBanner === 'function' ? realBanner() : ''}
+        ${typeof REAL !== 'undefined' && !REAL.on
+          ? '<button class="px-btn" id="btnGoReal">⚿ 接入实盘名册</button>' : ''}
         <button class="px-btn on dotted" id="btnGacha">⊕ 角色抽卡</button>
         <button class="px-btn" id="btnNewR">＋ 自定义研究员</button>
         <button class="px-btn ghost" id="btnResetR">↺ 恢复默认性格</button>
       </div>
     </div>
-    ${win('今日议题', `<div class="row wrap">
+    ${typeof REAL !== 'undefined' && REAL.on ? realBoardHTML() : win('今日议题', `<div class="row wrap">
         <span class="tag gold">TOPIC</span>
         <b style="font-size:13px">${DATA.topic}</b>
         <span class="sp"></span>
@@ -137,6 +142,11 @@ RENDER.desk = function(){
     <div class="desk" id="deskGrid"></div>`;
 
   drawDesk();
+  const gr2 = $('#btnGoReal');
+  if(gr2) gr2.onclick = ()=>{
+    if(!realAuthed()) return openVault(()=>{});      /* 先转保险库拿钥匙 */
+    loadReal(true).then(ok=> ok ? RENDER.desk() : toast('接不上：' + REAL.err));
+  };
   $('#btnGacha').onclick = openGacha;
   $('#btnNewR').onclick = openNewResearcher;
   $('#btnResetR').onclick = ()=>{ DATA.researchers.forEach(r=>{
@@ -179,8 +189,9 @@ function drawDesk(){
   if(gone.length){
     g.insertAdjacentHTML('beforeend', win('前员工档案',
       gone.map(r=>`<div class="row" style="margin-bottom:6px;opacity:.6">${avatarHTML(r.sp,'s3')}
-        <div><b>${r.n}</b><div class="t-xs t-dim">${r.id==='quant'?'跳槽城堡量化':'考核淘汰'} · 竞业条款 6 个月</div></div></div>`).join(''),
-      {color:'ink', cls:'rcard'}));
+        <div><b>${r.n}</b><div class="t-xs t-dim">${r.real ? r.real.status.why
+          : (r.id==='quant'?'跳槽城堡量化':'考核淘汰') + ' · 竞业条款 6 个月'}</div></div></div>`).join(''),
+      {color:'ink', cls:'rcard', sub: gone.length + ' 人'}));
   }
   bindDesk();
 }
@@ -191,23 +202,24 @@ function researcherCard(r){
     <div class="rhead">
       ${avatarHTML(r.sp,'s4')}
       <div>
-        <div class="rname">${r.n} ${rarityBadge(r)}${(typeof rLLMGet === 'function' && rLLMGet(r.id)?.key) ? ' <span class="tag cyan" title="自带专属 LLM">🧠</span>' : ''} ${r.veto?'<span class="tag rose">VETO</span>':''}</div>
+        <div class="rname">${r.n} ${r.real ? realStatusHTML(r) : rarityBadge(r)}${(typeof rLLMGet === 'function' && rLLMGet(r.id)?.key) ? ' <span class="tag cyan" title="自带专属 LLM">🧠</span>' : ''} ${r.veto?'<span class="tag rose">VETO</span>':''}</div>
         <div class="rproto">${r.proto}</div>
       </div>
-      <div class="lv">LV.${r.lv}<br><span class="t-xs t-dim" title="LV = 沉淀资料丰富度">沉淀度</span></div>
+      <div class="lv">LV.${r.lv}<br><span class="t-xs t-dim" title="${r.real?'LV = 平仓笔数与在册天数':'LV = 沉淀资料丰富度'}">${r.real?'资历':'沉淀度'}</span></div>
     </div>
-    <div class="px-bar thin mustard" style="margin-bottom:4px"><i style="width:${r.xp}%"></i></div>
+    ${r.real ? realHpHTML(r)
+             : `<div class="px-bar thin mustard" style="margin-bottom:4px"><i style="width:${r.xp}%"></i></div>`}
 
     <div class="row" style="margin:7px 0 0">
-      <span class="cap">战绩</span><span class="demo-mark">编造值</span>
+      <span class="cap">战绩</span>${r.real ? realStatSrc(r) : '<span class="demo-mark">编造值</span>'}
       <span class="sp"></span>
-      <span class="hearts" title="你采纳了他 ${r.adopted} 次，驳回 ${r.rejected} 次">${heartsHTML(r.love)}</span>
+      <span class="hearts" title="${r.real ? '信任度 '+r.real.hp : '你采纳了他 '+r.adopted+' 次，驳回 '+r.rejected+' 次'}">${heartsHTML(r.love)}</span>
     </div>
-    <div class="stat3">
+    ${r.real ? realStat3(r) : `<div class="stat3">
       <div><div class="k">采纳率</div><div class="v">${r.adopt}%</div></div>
-      <div><div class="k">${r.veto?'否决数':'命中率'}</div><div class="v">${r.veto? r.adopted : r.hit+'%'}</div></div>
+      <div><div class="k">${r.veto?'否决数':'命中率'}</div><div class="v">${r.hit+'%'}</div></div>
       <div><div class="k">最大回撤</div><div class="v t-rose">${r.mdd}%</div></div>
-    </div>
+    </div>`}
 
     <div class="sliders" data-r="${r.id}">
       ${sliderRow(r,'aggr','保守','激进')}
@@ -218,8 +230,8 @@ function researcherCard(r){
     <div class="cap" style="margin-bottom:4px">关注因子</div>
     <div class="chips">${r.factors.map((f,i)=>`<span class="chip ${i<3?'on':''}">${f}</span>`).join('')}</div>
 
-    <div class="cap" style="margin:8px 0 6px">对今日议题的发言</div>
-    <div class="saybox" id="say-${r.id}">${sayOf(r)}</div>
+    <div class="cap" style="margin:8px 0 6px">${r.real ? '最近一期怎么说' : '对今日议题的发言'}</div>
+    <div class="saybox" id="say-${r.id}">${r.real ? realSayHTML(r) : sayOf(r)}</div>
     <div class="motto">「${r.motto}」</div>
     ${reviewBlock(r)}
     <div class="inbox" id="inbox-${r.id}">
@@ -234,6 +246,7 @@ function researcherCard(r){
 function reviewBlock(r){
   const rv = DATA.reviews[r.id];
   if(!rv) return '';
+  if(r.real) return realReviewBlock(r);
   if(r.gone) return '<div class="bridge" style="margin-top:8px">已跳槽至城堡量化 · 归档「前员工」</div>';
   const nav = rNavSeries(r.id);
   const last = nav[nav.length-1].toFixed(1);
@@ -280,11 +293,16 @@ function bindDesk(){
     $$('input[type=range]', box).forEach(inp=>{
       inp.oninput = ()=>{
         r[inp.dataset.k] = +inp.value;
-        $('#say-' + r.id).innerHTML = sayOf(r);
+        /* 真研究员的口径由 doctrine 定死，滑块不该改写它说过的话 */
+        $('#say-' + r.id).innerHTML = r.real ? realSayHTML(r) : sayOf(r);
       };
     });
   });
   $$('.chip').forEach(c=> c.onclick = ()=> c.classList.toggle('on'));
+  $$('[data-realdir]').forEach(b=> b.onclick = ()=>{
+    const r = DATA.researchers.find(x=>x.id === b.dataset.realdir);
+    toast(r.real.dir);
+  });
   $$('[data-cull]').forEach(b=> b.onclick = ()=> openCullModal(b.dataset.cull));
   $$('[data-fieldtrip]').forEach(b=> b.onclick = ()=>{
     const r = DATA.researchers.find(x=>x.id === b.dataset.fieldtrip);
@@ -438,29 +456,35 @@ function openResearcherPanel(id){
     <section class="screen active">
       <div style="display:grid;grid-template-columns:360px 1fr;gap:12px;align-items:start">
         <div class="col">
-          ${win('灵魂 · 老板可现调', `
+          ${win(r.real ? '人设 · 引自它自己的 doctrine' : '灵魂 · 老板可现调', `
             <div class="row" style="margin-bottom:9px">${avatarHTML(r.sp,'s5')}
-              <div><b style="font-size:14px">${r.n}</b> ${rarityBadge(r)} ${r.veto?'<span class="tag rose">VETO</span>':''}
+              <div><b style="font-size:14px">${r.n}</b> ${r.real ? realStatusHTML(r) : rarityBadge(r)} ${r.veto?'<span class="tag rose">VETO</span>':''}
                 <div class="rproto">${r.proto}</div>
-                <div class="row" style="gap:4px;margin-top:4px">
+                ${r.real ? `<div class="t-xs t-dim" style="font-weight:700;margin-top:4px;line-height:1.6">${r.real.status.why || ''}</div>`
+                : `<div class="row" style="gap:4px;margin-top:4px">
                   <span class="tag ${rv.rank<=3?'gold':''}">考核 #${rv.rank||'-'}</span>
                   ${rv.pip?'<span class="tag rose">PIP</span>':''}
                   <span class="tag">${rv.status||'在岗'}</span>
-                </div></div></div>
+                </div>`}</div></div>
             <div class="motto">「${r.motto}」</div>
-            <div style="margin-top:8px">${trustBar(r.id, true)}</div>
-            <div class="sliders" data-r="${r.id}" style="margin-top:9px">
+            <div style="margin-top:8px">${r.real ? realHpHTML(r) : trustBar(r.id, true)}</div>
+            ${r.real ? `<div class="bridge" style="margin-top:9px">
+                这套人设不可现调 —— 它的性格就是 <code>${r.real.src}</code> 里那几条规则，
+                改它得去改那个文件，然后过它自己的闸：<b>${r.real.gate}</b>。</div>`
+              : `<div class="sliders" data-r="${r.id}" style="margin-top:9px">
               <div class="sld"><span class="lo">保守</span><input type="range" min="1" max="10" value="${r.aggr}" data-k="aggr"><span class="hi">激进</span></div>
               <div class="sld"><span class="lo">随大流</span><input type="range" min="1" max="10" value="${r.indep}" data-k="indep"><span class="hi">独立</span></div>
               <div class="sld"><span class="lo">短线</span><input type="range" min="1" max="10" value="${r.horizon}" data-k="horizon"><span class="hi">长线</span></div>
-            </div>
-            <div class="cap" style="margin:4px 0">对今日议题的发言（拖滑块看他改口）</div>
-            <div class="saybox" id="say-${r.id}">${sayOf(r)}</div>
-            <div class="cap" style="margin:8px 0 4px">关注因子</div>
-            <div class="chips">${r.factors.map((f,i)=>`<span class="chip ${i<3?'on':''}">${f}</span>`).join('')}</div>
-            ${r.creed ? `<div class="bridge" style="margin-top:8px">信条 · ${r.creed}</div>` : ''}
-            <button class="px-btn on dotted" id="soulEdit" style="width:100%;margin-top:9px">✎ 编辑灵魂文件（SOUL.md）</button>`,
-            {color:'pink'})}
+            </div>`}
+            <div class="cap" style="margin:4px 0">${r.real ? '最近一期怎么说' : '对今日议题的发言（拖滑块看他改口）'}</div>
+            <div class="saybox" id="say-${r.id}">${r.real ? realSayHTML(r) : sayOf(r)}</div>
+            <div class="cap" style="margin:8px 0 4px">${r.real ? '它自己写下的信条' : '关注因子'}</div>
+            ${r.real ? `<div class="t-xs" style="font-weight:700;line-height:1.9">
+                ${(r.real.creed || []).map(c=> '· ' + c).join('<br>')}</div>`
+              : `<div class="chips">${r.factors.map((f,i)=>`<span class="chip ${i<3?'on':''}">${f}</span>`).join('')}</div>`}
+            ${!r.real && r.creed ? `<div class="bridge" style="margin-top:8px">信条 · ${r.creed}</div>` : ''}
+            ${r.real ? '' : '<button class="px-btn on dotted" id="soulEdit" style="width:100%;margin-top:9px">✎ 编辑灵魂文件（SOUL.md）</button>'}`,
+            {color:'pink', sub: r.real ? r.real.src : ''})}
           ${win('任务收件箱', `
             <div id="inbox-${r.id}">
               ${(r.inbox && r.inbox.length)
@@ -475,7 +499,7 @@ function openResearcherPanel(id){
             {color:'sky', sub: (typeof rLLMGet === 'function' && rLLMGet(r.id)?.key) ? '自带大脑 🧠' : '共用公司大脑'})}
         </div>
         <div class="col">
-          ${r.veto
+          ${r.real ? realPortfolioHTML(r) : r.veto
             ? win('风控官不持仓', '<div class="t-sm" style="font-weight:700;line-height:1.8">他的 KPI 是别人少亏的钱。三道闸的判定记录见交易台 blotter。</div>', {color:'coral'})
             : win('模拟组合', `
               <div class="row"><span class="cap">30 日纸面 NAV</span><span class="demo-mark">编造值</span>
@@ -486,7 +510,9 @@ function openResearcherPanel(id){
                 <div><div class="k">贡献</div><div class="v">${rv.contrib ?? '—'}</div></div>
                 <div><div class="k">纪律</div><div class="v">${rv.disc ?? '—'}</div></div>
               </div>`, {color:'teal', sub:'他的仓位不是公司的仓位——考核用'})}
-          ${win('模拟仓 · 买卖建议时间轴', (DATA.trades[id] && DATA.trades[id].length)
+          ${r.real ? realPicksHTML(r) : ''}
+          ${win(r.real ? '已平仓回合 · 真实成交与退出理由' : '模拟仓 · 买卖建议时间轴',
+            (DATA.trades[id] && DATA.trades[id].length)
             ? DATA.trades[id].map(td=>`
               <div class="gap-item">
                 <div class="why" style="color:var(--ink)">
@@ -496,15 +522,17 @@ function openResearcherPanel(id){
                   <span class="${/否决|止损|强平/.test(td.st)?'t-rose':/采纳|执行|持有/.test(td.st)?'t-cyan':'t-dim'}" style="font-weight:700">→ ${td.st}</span>
                 </div>
               </div>`).join('')
-            : '<div class="t-xs t-dim" style="font-weight:700">还没开过口。</div>',
-            {color:'coral', sub:'建议 ≠ 成交：每条都要过原则闸 + 老板签字'})}
-          ${win('历史报告', reports.length ? reports.map((rp,i)=>`
-            <div class="gap-item" style="cursor:pointer" data-report="${id}|${i}">
-              <div class="gt"><span class="tag ${rp.score>=85?'gold':rp.score>=75?'cyan':''}">${rp.score} 分</span>
+            : `<div class="t-xs t-dim" style="font-weight:700">${r.real ? '账本里还没有他的平仓回合。' : '还没开过口。'}</div>`,
+            {color:'coral', sub: r.real ? '_PLATFORM/ledger/trades.jsonl · 退出理由为原文'
+                                        : '建议 ≠ 成交：每条都要过原则闸 + 老板签字'})}
+          ${win(r.real ? '最近一期落盘产物' : '历史报告', reports.length ? reports.map((rp,i)=>`
+            <div class="gap-item" ${r.real?'':'style="cursor:pointer"'} ${r.real?'':`data-report="${id}|${i}"`}>
+              <div class="gt">${rp.score != null ? `<span class="tag ${rp.score>=85?'gold':rp.score>=75?'cyan':''}">${rp.score} 分</span>` : '<span class="tag">文件</span>'}
                 <span>${rp.title}</span></div>
-              <div class="why">${rp.t} · ${rp.tag} · report-scorer 评分 · 点开看摘要</div>
+              <div class="why">${rp.t} · ${rp.tag}${r.real ? '' : ' · report-scorer 评分 · 点开看摘要'}</div>
             </div>`).join('') : '<div class="t-xs t-dim" style="font-weight:700">还没有产出。新员工或者该谈话了。</div>',
-            {color:'sky', sub:'公司资产，跳槽带不走'})}
+            {color:'sky', sub: r.real ? (r.real.report.date || '—') + ' · ' + r.real.dir.replace(/^.*invest skills\//,'invest skills/')
+                                      : '公司资产，跳槽带不走'})}
         </div>
       </div>
       <div class="panel-foot"><span class="demo-mark">DEMO</span> 战绩与报告评分为编造值。

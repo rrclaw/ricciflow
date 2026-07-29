@@ -54,6 +54,12 @@ function openVault(onOk){
       closeModal();
       if(VAULT.live){
         toast('🔓 保险库开了 · 真实知识库已接通（' + h.docs + ' 份文档）');
+        /* 钥匙一插，研究员名册与薪资也一并换成真账 */
+        if(typeof loadReal === 'function') loadReal(true).then(ok=>{
+          if(ok) toast('研究员名册已换成实盘账本（' + REAL.roster.n + ' 名）');
+          else if(REAL.err) toast('名册没接上：' + REAL.err);
+          if(ok && PANEL_OPEN && RENDER[PANEL_OPEN]) RENDER[PANEL_OPEN]();
+        });
       } else if(h && !h.auth){
         VAULT.key = ''; localStorage.removeItem('rf_boss_key');
         toast('钥匙不对。保安面无表情地看着你');

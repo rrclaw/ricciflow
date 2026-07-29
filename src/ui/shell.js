@@ -46,10 +46,16 @@ function openComponent(id){
   PANEL_OPEN = id;
   $('#panelTitle').textContent = c.n + ' · ' + c.icon;
   $('#panelBar').style.background = `var(--${c.color === 'ink' ? 'ink' : c.color})`;
+  /* 页脚必须说实话：接上真账本以后就不能再自称演示数据 */
+  const real = (typeof REAL !== 'undefined' && REAL.on && ['desk','finance'].includes(id));
   $('#panelBody').innerHTML =
     `<section class="screen active" id="${SCREEN_ID[id]}"></section>
-     <div class="panel-foot"><span class="demo-mark">DEMO</span>
-       本页全部数据为演示用虚构数据，不代表任何真实业绩。研究员「战绩 / 命中率」为编造值。
+     <div class="panel-foot">${real
+       ? `<span class="tag cyan">实盘账本</span>
+          研究员人设引自各策略 doctrine 原文，战绩来自 _PLATFORM 平仓账本与 rr.playbookex.com，
+          薪资按真实 token 消耗折算。仅本机可见。`
+       : `<span class="demo-mark">DEMO</span>
+          本页全部数据为演示用虚构数据，不代表任何真实业绩。研究员「战绩 / 命中率」为编造值。`}
        <span class="sp"></span><span>里奇流资本 · 曲率即命运</span></div>`;
   $('#panel').classList.add('open');
   $('#panelScrim').classList.add('open');
