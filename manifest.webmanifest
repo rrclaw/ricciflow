@@ -1,0 +1,10 @@
+{
+  "name": "里奇流资本 · Ricci Flow Capital",
+  "short_name": "里奇流资本",
+  "description": "像素风买方基金模拟经营 · AI 原生投研工作台",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#1c140e",
+  "theme_color": "#3f2b23",
+  "icons": [{ "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

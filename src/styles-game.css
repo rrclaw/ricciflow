@@ -1,0 +1,113 @@
+/* ricciflow — 世界层 & 游戏壳样式。UI 抽屉层样式见 styles.css */
+
+html, body { height: 100%; overflow: hidden; }
+body { background: #1c140e; }   /* 世界层底色：深木色，替代 V1 蓝格纸 */
+
+/* ---------- 世界 canvas ---------- */
+#world {
+  position: fixed; inset: 0;
+  width: 100vw; height: 100vh;
+  image-rendering: pixelated;
+  display: block;
+}
+
+/* 走近家具的交互提示 */
+.interact-hint {
+  position: fixed; z-index: 300;
+  background: var(--ink); color: var(--cream);
+  font-size: 11px; font-weight: 700; letter-spacing: .06em;
+  padding: 3px 8px; pointer-events: none;
+  clip-path: var(--notch-sm);
+  animation: hintBob .6s steps(2) infinite;
+}
+@keyframes hintBob { 0% { transform: translateY(0) } 100% { transform: translateY(-3px) } }
+
+/* ---------- 顶部状态条 ---------- */
+.game-topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  display: flex; align-items: center; gap: 14px;
+  padding: 6px 12px;
+  background: rgba(28, 20, 14, .88);
+  border-bottom: 3px solid var(--ink);
+  color: var(--cream);
+  font-size: 11px; font-weight: 700;
+}
+.gt-brand { background: var(--coral); color: #fff; padding: 2px 8px; letter-spacing: .1em;
+  box-shadow: inset 0 0 0 2px var(--ink); }
+.gt-stat { color: #b9a68f; }
+.gt-stat b { color: #fff; margin-left: 3px; }
+.gt-loc { margin-left: auto; color: var(--mustard); letter-spacing: .06em; }
+.gt-demo .demo-mark { vertical-align: middle; }
+
+/* ---------- HUD 快捷栏 ---------- */
+.hud {
+  position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 200;
+  display: flex; gap: 6px; padding: 5px;
+  background: rgba(28, 20, 14, .88);
+  clip-path: var(--notch);
+  border: 0; box-shadow: inset 0 0 0 3px var(--ink);
+}
+.hud-item {
+  position: relative; width: 44px; height: 44px;
+  background: var(--cream);
+  box-shadow: inset 0 0 0 3px var(--ink);
+  clip-path: var(--notch-sm);
+  display: grid; place-items: center;
+  font-size: 15px; font-weight: 700; color: var(--ink);
+  cursor: pointer;
+}
+.hud-item:hover { background: var(--mustard); }
+.hud-item.locked { background: #8a7c6b; color: #55493c; }
+.hud-item.off { display: none; }
+.hud-item .lbl {
+  position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
+  background: var(--ink); color: var(--cream);
+  padding: 2px 7px; font-size: 10px; white-space: nowrap; display: none;
+}
+.hud-item:hover .lbl { display: block; }
+
+/* ---------- 组件面板（大抽屉） ---------- */
+.panel-scrim {
+  position: fixed; inset: 0; z-index: 400;
+  background: rgba(20, 12, 6, .55); display: none;
+}
+.panel-scrim.open { display: block; }
+.panel {
+  position: fixed; z-index: 410;
+  top: 44px; left: 50%; transform: translateX(-50%);
+  width: min(1500px, 96vw); height: calc(100vh - 110px);
+  background: var(--ink); padding: 3px; clip-path: var(--notch);
+  display: none;
+}
+.panel.open { display: block; animation: panelIn .16s steps(4); }
+@keyframes panelIn { from { transform: translateX(-50%) translateY(14px); opacity: 0 }
+                     to   { transform: translateX(-50%) translateY(0); opacity: 1 } }
+.panel-chrome { background: var(--cream); clip-path: var(--notch); height: 100%;
+  display: flex; flex-direction: column; }
+.panel-body { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 12px;
+  background: var(--paper);
+  background-image:
+    linear-gradient(rgba(255,255,255,.62) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.62) 1px, transparent 1px);
+  background-size: 26px 26px; }
+.panel-body .screen { display: block; }   /* V1 .screen 在面板内始终展开 */
+.panel-foot { border-top: 3px solid var(--ink); background: var(--cream2);
+  padding: 6px 12px; font-size: 10px; color: var(--dim); font-weight: 700;
+  display: flex; gap: 10px; align-items: center; }
+
+/* ---------- 开场引导 ---------- */
+.guide { position: fixed; inset: 0; z-index: 900; display: grid; place-items: center;
+  background: rgba(20, 12, 6, .72); }
+.guide.done { display: none; }
+.guide-box { width: 470px; max-width: 92vw; background: var(--cream);
+  clip-path: var(--notch); box-shadow: inset 0 0 0 3px var(--ink); padding: 18px; }
+.guide-title { font-size: 15px; font-weight: 700; letter-spacing: .08em;
+  border-bottom: 3px solid var(--ink); padding-bottom: 8px; margin-bottom: 10px; }
+.guide-body { font-size: 12px; line-height: 2.0; }
+.guide-foot { margin-top: 10px; font-size: 9px; color: var(--dim); font-weight: 700; }
+
+/* 面板打开时世界压暗由 scrim 承担；抽屉(V1 窄)层级要盖过面板 */
+.drawer { z-index: 8000; }
+.scrim { z-index: 7900; }
+.modal { z-index: 8600; }
+.tipbox { z-index: 8500; }

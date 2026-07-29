@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>里奇流资本 · RICCI FLOW CAPITAL</title>
+<meta name="description" content="像素风买方基金模拟经营 · AI 原生投研工作台 demo">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="src/styles.css">
+<link rel="stylesheet" href="src/styles-game.css">
+</head>
+<body>
+
+<!-- ========== 世界层：canvas ========== -->
+<canvas id="world"></canvas>
+<div id="interactHint" class="interact-hint" style="display:none"></div>
+
+<!-- ========== 顶部状态条（游戏 HUD 上沿） ========== -->
+<div class="game-topbar" id="gameTopbar">
+  <span class="gt-brand">里奇流资本 · RICCI FLOW</span>
+  <span class="gt-stat">DATE <b id="tbDate">2026-07-29</b></span>
+  <span class="gt-stat">数据源 <b id="tbSrc">0/16</b></span>
+  <span class="gt-stat">知识库 <b id="tbCover">0%</b></span>
+  <span class="gt-stat">今日场景 <b id="tbScene">0</b></span>
+  <span class="gt-loc" id="tbLoc">上海中心 68F · 老板办公室</span>
+  <span class="gt-demo"><span class="demo-mark">DEMO</span></span>
+</div>
+
+<!-- ========== 底部 HUD 快捷栏 ========== -->
+<div class="hud" id="hud"></div>
+
+<!-- ========== 组件面板（大抽屉） ========== -->
+<div class="panel-scrim" id="panelScrim"></div>
+<div class="panel" id="panel">
+  <div class="panel-chrome">
+    <div class="win-bar" id="panelBar">
+      <span id="panelTitle">—</span>
+      <span class="sub">里奇流资本 · 内部系统</span>
+      <span class="dots" id="panelClose" style="cursor:pointer">_ □ ×</span>
+    </div>
+    <div class="panel-body" id="panelBody"></div>
+  </div>
+</div>
+
+<!-- ========== V1 沿用的窄抽屉 / 弹窗 / tip ========== -->
+<div class="scrim" id="scrim"></div>
+<div class="drawer" id="drawer"><div class="in" id="drawerIn"></div></div>
+<div class="tipbox" id="tip"></div>
+<div class="modal" id="modal"><div class="wrap"><div class="box" id="modalBox"></div></div></div>
+
+<!-- ========== 开场引导卡 ========== -->
+<div class="guide" id="guide">
+  <div class="guide-box">
+    <div class="guide-title">欢迎回到里奇流资本，老板。</div>
+    <div class="guide-body">
+      <b>WASD / 方向键 / 点击地面</b> — 走动<br>
+      <b>E 或 点击家具</b> — 使用组件（办公桌=研究台 · 行情屏=数据源 · 书架=知识库…）<br>
+      <b>走到大门</b> — 出办公室，坐电梯，看世界<br>
+      <b>底部快捷栏</b> — 懒得走路时直接开
+    </div>
+    <button class="px-btn on dotted" id="guideOK" style="width:100%;margin-top:10px">开工（Enter）</button>
+    <div class="guide-foot"><span class="demo-mark">DEMO</span> 全部数据为虚构演示数据，不代表任何真实业绩</div>
+  </div>
+</div>
+
+<!-- ========== 页脚免责（面板内可见） ========== -->
+
+<!-- 加载顺序即依赖顺序：零构建，file:// 可直开 -->
+<script src="src/core.js"></script>
+<script src="src/engine/sprite.js"></script>
+<script src="src/data/mock.js"></script>
+<script src="src/components/desk.js"></script>
+<script src="src/components/rack.js"></script>
+<script src="src/components/atlas.js"></script>
+<script src="src/components/scenes.js"></script>
+<script src="src/components/settings.js"></script>
+<script src="src/components/research.js"></script>
+<script src="src/components/trading.js"></script>
+<script src="src/components/daily.js"></script>
+<script src="src/llm/provider.js"></script>
+<script src="src/notify/notify.js"></script>
+<script src="src/engine/tile.js"></script>
+<script src="src/engine/walk.js"></script>
+<script src="src/world/office.js"></script>
+<script src="src/world/floors.js"></script>
+<script src="src/world/citymap.js"></script>
+<script src="src/ui/shell.js"></script>
+</body>
+</html>
