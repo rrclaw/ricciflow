@@ -191,7 +191,7 @@ function researcherCard(r){
     <div class="rhead">
       ${avatarHTML(r.sp,'s4')}
       <div>
-        <div class="rname">${r.n} ${rarityBadge(r)} ${r.veto?'<span class="tag rose">VETO</span>':''}</div>
+        <div class="rname">${r.n} ${rarityBadge(r)}${(typeof rLLMGet === 'function' && rLLMGet(r.id)?.key) ? ' <span class="tag cyan" title="自带专属 LLM">🧠</span>' : ''} ${r.veto?'<span class="tag rose">VETO</span>':''}</div>
         <div class="rproto">${r.proto}</div>
       </div>
       <div class="lv">LV.${r.lv}<br><span class="t-xs t-dim" title="LV = 沉淀资料丰富度">沉淀度</span></div>
@@ -471,6 +471,8 @@ function openResearcherPanel(id){
               ${!r.veto && (rv.status === '在岗') ? `<button class="px-btn sm" data-fieldtrip="${r.id}">派出去调研</button>` : ''}
               <button class="px-btn sm ghost" id="gotoRoster">打开研究员名册</button>
             </div>`, {color:'mustard'})}
+          ${win('大脑 · 专属 LLM', (typeof rLLMConfigHTML === 'function' ? rLLMConfigHTML(r.id) : ''),
+            {color:'sky', sub: (typeof rLLMGet === 'function' && rLLMGet(r.id)?.key) ? '自带大脑 🧠' : '共用公司大脑'})}
         </div>
         <div class="col">
           ${r.veto
@@ -529,6 +531,7 @@ function openResearcherPanel(id){
   });
   const gr = $('#gotoRoster'); if(gr) gr.onclick = ()=> openComponent('desk');
   const se = $('#soulEdit'); if(se) se.onclick = ()=> openSoulEditor(id);
+  if(typeof bindRLLMConfig === 'function') bindRLLMConfig(id, ()=> openResearcherPanel(id));
   $$('#panelBody [data-report]').forEach(el2=> el2.onclick = ()=>{
     const [rid, idx] = el2.dataset.report.split('|');
     const rp = DATA.reports[rid][+idx];

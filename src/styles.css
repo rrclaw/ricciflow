@@ -524,3 +524,28 @@ body{
 @keyframes burstFlash{0%{opacity:1}100%{opacity:0}}
 .gacha-card.tier-ssr{box-shadow:inset 0 0 0 4px var(--ink), inset 0 0 0 8px #e9b23c}
 .gacha-card.tier-sr{box-shadow:inset 0 0 0 4px var(--ink), inset 0 0 0 8px #7fa8dd}
+
+/* ==========================================================================
+   掼蛋桌
+   ========================================================================== */
+.gd-table{position:relative;min-height:240px;background:#2e6b4f;
+  box-shadow:inset 0 0 0 3px var(--ink), inset 0 0 0 9px #245240;padding:10px}
+.gd-seat{position:absolute;text-align:center;width:120px}
+.gd-seat.top{top:8px;left:50%;transform:translateX(-50%)}
+.gd-seat.left{left:8px;top:50%;transform:translateY(-50%)}
+.gd-seat.right{right:8px;top:50%;transform:translateY(-50%)}
+.gd-seat .px-avatar{margin:0 auto}
+.gd-pile{position:absolute;left:50%;top:56%;transform:translate(-50%,-50%);
+  text-align:center;min-width:180px}
+.gd-hand{display:flex;flex-wrap:wrap;gap:0;margin-top:10px;padding-left:8px}
+.gd-card{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;
+  width:34px;height:48px;background:#fff;box-shadow:inset 0 0 0 2px var(--ink);
+  margin-left:-8px;cursor:pointer;user-select:none;font-weight:700;position:relative}
+.gd-card b{font-size:12px;line-height:1}
+.gd-card i{font-style:normal;font-size:13px;line-height:1.2}
+.gd-card.red{color:#d63b2f}
+.gd-card.sel{transform:translateY(-9px);box-shadow:inset 0 0 0 2px var(--ink), 0 0 0 2px var(--mustard)}
+.gd-pile .gd-card{width:30px;height:42px;margin-left:-6px;cursor:default}
+@media (max-width:760px){
+  .gd-card{width:30px;height:44px;margin-left:-10px}
+}

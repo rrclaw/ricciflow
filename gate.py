@@ -80,7 +80,7 @@ async def main():
         await page.click("#themeToggle")
 
         # HUD
-        check(await page.eval_on_selector_all(".hud-item", "e=>e.length") == 9, "HUD 9 图标（8组件+地图锁）")
+        check(await page.eval_on_selector_all(".hud-item", "e=>e.length") == 11, "HUD 11 图标（9组件+手机+地图）")
 
         # 走出大门 → 楼层
         await page.evaluate("WALK.x = 13*32; WALK.y = 13.4*32;")
@@ -272,6 +272,34 @@ async def main():
         check(await page.eval_on_selector_all("#gachaCard .rarity", "e=>e.length") == 1, "抽卡翻面出稀有度")
         await page.click("#signBtn"); await page.wait_for_timeout(400)
         check(await page.evaluate("DATA.researchers.length") == g0 + 1, "签约 → 名册 +1")
+        await page.click("#panelClose")
+
+        # ---------- 掼蛋 / 手机 / 分脑 / 财务处 ----------
+        await page.evaluate("openGuandan()"); await page.wait_for_timeout(500)
+        check(await page.eval_on_selector_all("#gdHand .gd-card", "e=>e.length") == 27, "掼蛋发牌 27 张")
+        await page.click("#gdHint"); await page.wait_for_timeout(200)
+        check(await page.eval_on_selector_all("#gdHand .gd-card.sel", "e=>e.length") >= 1, "掼蛋提示选牌")
+        await page.click("#gdPlay"); await page.wait_for_timeout(300)
+        check(await page.eval_on_selector_all("#gdHand .gd-card", "e=>e.length") < 27, "掼蛋出牌生效")
+        await page.wait_for_timeout(2500)   # 让 AI 走几轮
+        await page.click("#panelClose")
+        await page.evaluate("openPhone()"); await page.wait_for_timeout(300)
+        check(await page.eval_on_selector_all(".ph-tab", "e=>e.length") == 3, "手机三 tab")
+        await page.click('[data-pt="bosses"]'); await page.wait_for_timeout(200)
+        await page.click('[data-pht="menghu"]'); await page.wait_for_timeout(200)
+        await page.click("[data-phr]"); await page.wait_for_timeout(1400)
+        check(await page.locator("text=茶室好").count() >= 1, "老板圈私信可回复且对方回话")
+        await page.evaluate("closePhone()")
+        await page.evaluate("openResearcherPanel('serenity')"); await page.wait_for_timeout(400)
+        check(await page.eval_on_selector_all("[data-rllm-p]", "e=>e.length") == 4, "研究员专属 LLM 四 provider")
+        await page.fill("#rllmKey", "sk-test-demo"); await page.click("#rllmSave")
+        await page.wait_for_timeout(400)
+        check(await page.evaluate("!!(rLLMGet('serenity') && rLLMGet('serenity').key)"), "专属 key 落 localStorage")
+        await page.evaluate("rLLMSave('serenity', null)")   # 清理测试残留
+        await page.evaluate("closePanel()")
+        await page.click('[data-hud="finance"]'); await page.wait_for_timeout(500)
+        check(await page.eval_on_selector_all("#scr-finance table tr", "e=>e.length") >= 10, "财务处薪资表成行")
+        check(await page.locator("text=本月利润").count() >= 1, "财务处利润结算")
         await page.click("#panelClose")
 
         # ---------- PWA / 收尾 ----------

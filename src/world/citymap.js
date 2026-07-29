@@ -521,7 +521,8 @@ const VENUE_DECOR = {
     chat:[
       ['serenity','茶室聊的都能上纪要，商 K 聊的只能上心'],
       ['macro','供给收缩型涨价，久期比大家想的短'],
-      ['guest','你们那个像素办公室是怎么回事，全陆家嘴都在传'],
+      ['guest','来来来，三缺一，掼蛋走起'],
+      ['macro','出牌比发研报果断多了你们'],
       ['serenity','绕不开的地方才有钱赚。续杯']]},
   ktv:{n:'夜莺会所（商K）', accent:'#7b4a9c', floor:'#4a3a5c',
     chat:[
@@ -546,6 +547,9 @@ function venueRoom(key){
   const F = [];
   F.push({id:'join', tx:5, ty:2, tw:3, th:1, solid:false,
     label:'入席 · 正式开一局饭局', onUse:()=> startVenueDinner(key)});
+  if(key === 'tea')
+    F.push({id:'gd', tx:9.6, ty:4, tw:3, th:2, solid:false,
+      label:'牌桌 · 来一局掼蛋', onUse:()=> openGuandan()});
 
   /* ---------- 分店画法 ---------- */
   const paintRest = (ctx, hour, frame)=>{
@@ -635,6 +639,21 @@ function venueRoom(key){
       ctx.fillRect(tx + dx - sway, ty + dy - 9, 3, 6);
       ctx.fillRect(tx + dx + sway, ty + dy - 18, 3, 5);
     });
+    /* 掼蛋牌桌（右侧） */
+    const kx = 9.8*TILE, ky = 4.6*TILE;
+    ctx.fillStyle = 'rgba(40,22,10,.25)'; ctx.fillRect(kx + 4, ky + 44, 84, 8);
+    ctx.fillStyle = W_PAL.ink; ctx.fillRect(kx - 3, ky - 3, 90, 50);
+    ctx.fillStyle = '#2e6b4f'; ctx.fillRect(kx, ky, 84, 44);
+    /* 扇形三张牌 */
+    [[-8, '#d63b2f'], [0, '#3f2b23'], [8, '#d63b2f']].forEach(([dx, c], i)=>{
+      ctx.save(); ctx.translate(kx + 42 + dx, ky + 22); ctx.rotate((i - 1) * .18);
+      ctx.fillStyle = '#fff'; ctx.fillRect(-9, -13, 18, 26);
+      ctx.strokeStyle = W_PAL.ink; ctx.lineWidth = 2; ctx.strokeRect(-9, -13, 18, 26);
+      ctx.fillStyle = c; ctx.fillRect(-4, -7, 8, 8);
+      ctx.restore();
+    });
+    ctx.fillStyle = '#f4efe4'; ctx.font = 'bold 11px monospace';
+    ctx.fillText('掼蛋', kx + 30, ky + 58);
     /* 蒲团 ×4 */
     seats.forEach(([sx, sy])=>{
       ctx.fillStyle = '#7a8a5e'; ctx.beginPath();
@@ -658,7 +677,7 @@ function venueRoom(key){
     /* 歌词滚动条 */
     ctx.fillStyle = frame ? '#e9c56a' : '#fff';
     ctx.font = 'bold 12px monospace';
-    ctx.fillText('♪ 朋友一生一起走～ 那些日子不再有～', 3.4*TILE + 12, 2.1*TILE - 10);
+    ctx.fillText('♪ 曲率一路向上走～ 净值永不回头～', 3.4*TILE + 12, 2.1*TILE - 10);
     /* 音箱 ×2 */
     [[2.4*TILE, 10],[10.2*TILE, 10]].forEach(([bx, by])=>{
       ctx.fillStyle = W_PAL.ink; ctx.fillRect(bx, by, 26, 60);

@@ -315,7 +315,11 @@ async function playChatRound(userQ, isBoot){
     const holder = el('div','saybox',''); holder.style.margin = '7px 0'; log.appendChild(holder);
     holder.innerHTML = '<span class="t-dim">实时模式思考中…</span>';
     try {
-      const txt = await llmAsk(q, '你是里奇流资本的投研 AI。课题：存储涨价外溢设备与材料。用中文简答，给要点。');
+      const tkt = tk(RESEARCH_VIEW.slice(7));
+      const leadR = tkt && tkt.recipe.res && tkt.recipe.res[0];
+      const txt = await (typeof llmAskFor === 'function' && leadR
+        ? llmAskFor(leadR, q, '你是里奇流资本的投研 AI。课题：存储涨价外溢设备与材料。用中文简答，给要点。')
+        : llmAsk(q, '你是里奇流资本的投研 AI。课题：存储涨价外溢设备与材料。用中文简答，给要点。'));
       holder.innerHTML = txt.replace(/\n/g,'<br>') + '<div class="t-xs t-dim" style="margin-top:5px;font-weight:700">来源：实时 LLM（未经数据源核验，谨慎采信）</div>';
     } catch(err){
       holder.innerHTML = '<span class="t-rose">实时调用失败：' + err.message + '。回落剧本。</span>';

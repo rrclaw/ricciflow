@@ -126,6 +126,20 @@ function officeRoom(){
   });
   F.push({id:'coffee',      tx:24, ty:5, tw:1, th:2, comp:'daily',
           label:'咖啡机 · 老板日报', paint:paintCoffee});
+  F.push({id:'safe', tx:1, ty:9, tw:2, th:2, comp:'finance',
+          label:'保险柜 · 财务处',
+          paint:(ctx, x, y)=>{
+            ctx.fillStyle = W_PAL.ink; ctx.fillRect(x + 4, y + 4, 2*TILE - 8, 2*TILE - 10);
+            ctx.fillStyle = '#5a616b'; ctx.fillRect(x + 8, y + 8, 2*TILE - 16, 2*TILE - 18);
+            ctx.fillStyle = '#3a4048'; ctx.fillRect(x + 12, y + 12, 2*TILE - 24, 2*TILE - 26);
+            /* 转盘锁 */
+            ctx.fillStyle = W_PAL.mustard; ctx.beginPath();
+            ctx.arc(x + TILE, y + TILE - 4, 9, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = W_PAL.ink; ctx.lineWidth = 2; ctx.stroke();
+            ctx.fillStyle = W_PAL.ink; ctx.fillRect(x + TILE - 1, y + TILE - 12, 3, 8);
+            ctx.fillStyle = '#e9c56a'; ctx.font = 'bold 9px monospace';
+            ctx.fillText('¥', x + TILE + 12, y + 14);
+          }});
   F.push({id:'trade_desk',  tx:4,  ty:11, tw:4, th:2, comp:'trading',
           label:'交易柜台 · 交易台', paint:paintTradeDesk});
   F.push({id:'main_door',   tx:12, ty:13, tw:2, th:2, solid:false,

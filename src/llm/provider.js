@@ -92,3 +92,67 @@ function bindLLMConfig(root){
     saveLLM(); toast('LLM 配置已保存（仅本机）');
   };
 }
+
+/* ==========================================================================
+   每研究员独立大脑：各配各的 provider/key，没配的回落公司公共配置
+   ========================================================================== */
+function rLLMGet(id){
+  return JSON.parse(localStorage.getItem('rf_llm_r_' + id) || 'null');
+}
+function rLLMSave(id, cfg){
+  if(cfg) localStorage.setItem('rf_llm_r_' + id, JSON.stringify(cfg));
+  else localStorage.removeItem('rf_llm_r_' + id);
+}
+async function llmAskFor(researcherId, userText, systemText){
+  const own = rLLMGet(researcherId);
+  if(own && own.key){
+    const saved = {...LLM_CFG};
+    Object.assign(LLM_CFG, own);
+    try { return await llmAsk(userText, systemText); }
+    finally { Object.assign(LLM_CFG, saved); }
+  }
+  return llmAsk(userText, systemText);   /* 回落公司公共大脑 */
+}
+function rLLMConfigHTML(id){
+  const own = rLLMGet(id) || {provider:'anthropic', baseURL:LLM_PRESETS.anthropic.baseURL,
+    model:LLM_PRESETS.anthropic.model, key:''};
+  return `
+    <div class="t-xs t-dim" style="font-weight:700;line-height:1.7;margin-bottom:8px">
+      不配 = 用「系统」里的公司公共大脑。配了 = 这位研究员自带大脑，实时模式对话走他自己的 key。</div>
+    <div class="field"><label>PROVIDER</label>
+      <div class="opts">${Object.entries(LLM_PRESETS).map(([k, v])=>
+        `<div class="opt ${own.provider === k ? 'on' : ''}" data-rllm-p="${k}">${v.n}</div>`).join('')}</div></div>
+    <div class="field"><label>MODEL</label>
+      <input class="inp" id="rllmModel" value="${own.model || ''}"></div>
+    <div class="field"><label>BASE URL</label>
+      <input class="inp" id="rllmBase" value="${own.baseURL || ''}"></div>
+    <div class="field"><label>API KEY（只存本机）</label>
+      <input class="inp" id="rllmKey" type="password"
+        placeholder="${own.key ? '已保存 · ' + own.key.slice(0, 6) + '****' : '粘贴这位研究员专属的 key'}"></div>
+    <div class="row" style="gap:6px">
+      <button class="px-btn sm on" id="rllmSave">保存专属大脑</button>
+      <button class="px-btn sm ghost danger" id="rllmClear">拆除 · 回公司大脑</button>
+    </div>`;
+}
+function bindRLLMConfig(id, refresh){
+  let sel = (rLLMGet(id) || {}).provider || 'anthropic';
+  $$('#panelBody [data-rllm-p]').forEach(o=> o.onclick = ()=>{
+    sel = o.dataset.rllmP;
+    $$('#panelBody [data-rllm-p]').forEach(x=> x.classList.toggle('on', x === o));
+    const p = LLM_PRESETS[sel];
+    $('#rllmModel').value = p.model; $('#rllmBase').value = p.baseURL;
+  });
+  $('#rllmSave').onclick = ()=>{
+    const prev = rLLMGet(id) || {};
+    const k = $('#rllmKey').value.trim();
+    rLLMSave(id, {provider:sel, model:$('#rllmModel').value.trim(),
+      baseURL:$('#rllmBase').value.trim(), key: k || prev.key || ''});
+    toast('已保存：他现在用自己的脑子了');
+    if(refresh) refresh();
+  };
+  $('#rllmClear').onclick = ()=>{
+    rLLMSave(id, null);
+    toast('已拆除：回公司公共大脑');
+    if(refresh) refresh();
+  };
+}

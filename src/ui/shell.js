@@ -25,12 +25,15 @@ const COMPONENTS = [
     render: ()=> RENDER.trading && RENDER.trading() },
   { id:'daily',    n:'日报',     icon:'报', furn:'coffee',     color:'pink',    enabled:true,
     render: ()=> RENDER.daily && RENDER.daily() },
+  { id:'finance',  n:'财务处',   icon:'财', furn:'safe',       color:'mustard', enabled:true,
+    render: ()=> RENDER.finance && RENDER.finance() },
   { id:'settings', n:'系统',     icon:'统', furn:'rules_board', color:'ink',    enabled:true,
     render: ()=> RENDER.sys() },
 ];
 /* 屏容器 id 与 V1 保持一致，V1 渲染函数零改动 */
 const SCREEN_ID = { research:'scr-research', rack:'scr-sources', atlas:'scr-atlas',
-  desk:'scr-desk', scenes:'scr-war', trading:'scr-trading', daily:'scr-daily', settings:'scr-sys' };
+  desk:'scr-desk', scenes:'scr-war', trading:'scr-trading', daily:'scr-daily',
+  finance:'scr-finance', settings:'scr-sys' };
 
 function compById(id){ return COMPONENTS.find(c=> c.id === id); }
 
@@ -83,7 +86,7 @@ if(typeof toast !== 'function'){
 
 /* ---------- HUD：图标 + 全称常显，悬停出一句话说明 ---------- */
 const HUD_HINTS = {
-  research:'流水线看板 · 灵感到跟踪', rack:'数据接口机架', atlas:'知识图谱与缺口',
+  research:'流水线看板 · 灵感到跟踪', rack:'数据接口机架', atlas:'知识图谱与缺口', finance:'tokens 薪资 · 成本 · 基金收入',
   desk:'研究员名册与考核', scenes:'晨会/反路演/饭局/调研', trading:'持仓·原则闸·拦截',
   daily:'等你拍板的事', settings:'配色·LLM·装修·红线'
 };
@@ -98,6 +101,14 @@ function drawHUD(){
     b.onclick = ()=> openComponent(c.id);
     hud.appendChild(b);
   });
+  /* 老板的手机（常驻，带未读角标） */
+  const ph = el('button','hud-item',
+    `<span class="ico">✆</span><span class="name">手机</span>
+     <span class="ph-badge" id="phoneBadge" style="display:none">0</span>
+     <span class="hint">通知 · 公司群 · 老板圈</span>`);
+  ph.dataset.hud = 'phone';
+  ph.onclick = ()=> openPhone();
+  hud.appendChild(ph);
   /* 大地图入口：在办公室时锁定 */
   const locked = GAME.location === 'office';
   const m = el('button','hud-item' + (locked ? ' locked' : ''),
