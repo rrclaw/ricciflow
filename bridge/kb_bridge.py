@@ -238,6 +238,20 @@ class H(http.server.BaseHTTPRequestHandler):
                 return self._send(200, real.finance())
             except Exception as e:
                 return self._send(200, {"ok": False, "error": str(e)})
+        if u.path in ("/api/wiki", "/api/wiki_page", "/api/srcreg"):
+            # 真实知识库：613 页 wiki + 1887 条缺口 + 8552 条来源注册
+            try:
+                import kbreal
+                if u.path == "/api/wiki":
+                    return self._send(200, kbreal.wiki_list())
+                if u.path == "/api/srcreg":
+                    return self._send(200, kbreal.source_registry())
+                slug = (q.get("slug") or [""])[0]
+                if not slug:
+                    return self._send(400, {"ok": False, "error": "缺 slug"})
+                return self._send(200, kbreal.wiki_page(slug))
+            except Exception as e:
+                return self._send(200, {"ok": False, "error": str(e)})
         if u.path == "/api/buildings":
             inv = {}
             for d in DOCS.values():

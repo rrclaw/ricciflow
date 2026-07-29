@@ -37,6 +37,7 @@ async function loadReal(force){
     REAL.roster = ros; REAL.finance = fin; REAL.err = '';
     applyRealRoster(ros);
     REAL.on = true;
+    await loadRealKB(force);       /* 知识库与数据源一起换真，失败不影响名册 */
   }catch(e){
     REAL.err = String(e.message || e);
     REAL.on = false;
@@ -264,4 +265,185 @@ function realBanner(){
     return `<span class="tag cyan" title="数据来自本机 ~/invest skills 与 rr.playbookex.com">实盘账本 · ${r.n} 名 · ${r.as_of}</span>`;
   }
   return `<span class="demo-mark" title="${REAL.err || '插上老板钥匙后换成真实名册'}">编造值</span>`;
+}
+
+/* ==========================================================================
+   真实知识库：613 页 wiki 变成 ATLAS 的节点，1887 条缺口变成缺口提示，
+   8552 条来源注册变成数据源机架的库存与时效。
+   节点的 docs / fresh 不是编的：docs = sources.jsonl 里标到这个行业头上的原始
+   材料份数，fresh = 最近一份距今天数。页面在但 docs=0 的，本身就是真实缺口。
+   ========================================================================== */
+REAL.kb = null; REAL.srcreg = null;
+
+async function loadRealKB(force){
+  if(REAL.kb && !force) return true;
+  if(!realAuthed()) { REAL.err = '需要老板钥匙'; return false; }
+  const k = encodeURIComponent(VAULT.key);
+  try{
+    const [w, s] = await Promise.all([
+      fetch(BRIDGE + '/api/wiki?key=' + k, {signal:AbortSignal.timeout(30000)}).then(r=>r.json()),
+      fetch(BRIDGE + '/api/srcreg?key=' + k, {signal:AbortSignal.timeout(30000)}).then(r=>r.json())
+    ]);
+    if(!w || !w.pages) throw new Error(w && w.error || 'wiki 为空');
+    REAL.kb = w; REAL.srcreg = s && s.ok ? s : null;
+    applyRealAtlas(w);
+    return true;
+  }catch(e){ REAL.err = String(e.message || e); return false; }
+}
+
+/* 行业页 → ATLAS 节点。个股页不上图（488 个点会糊成一片），
+   但它们的 belongs_to 用来还原「按公司」维度的真实归属。 */
+function applyRealAtlas(w){
+  const ind = w.pages.filter(p=> p.kind === 'industry');
+  const byslug = {};
+  DATA.atlas = ind.map((p, i)=>{
+    const id = 'w_' + p.slug;
+    byslug[p.slug] = id;
+    const seg = (p.sector || '').split(/\s*[-/]\s*/).filter(Boolean);
+    return {
+      id, slug:p.slug, kind:'industry', domain:p.domain || '未分类',
+      layer: seg[1] || seg[0] || '—', name:p.title || p.slug,
+      docs:p.docs || 0, conf:p.conf || 0, fresh:p.fresh ?? 999,
+      sources:[], edges:[], validated:p.gaps || 0,
+      stance:p.stance, cycle:p.cycle, updated:p.updated, gaps:p.gaps || 0,
+      themes:p.themes || []
+    };
+  });
+  /* 真实连边：wiki frontmatter 里的 upstream/downstream/competitors… */
+  const idx = {}; DATA.atlas.forEach(n=> idx[n.id] = n);
+  ind.forEach(p=>{
+    const n = idx['w_' + p.slug]; if(!n) return;
+    Object.values(p.edges || {}).flat().forEach(t=>{
+      const tid = byslug[t];
+      if(tid && tid !== n.id && !n.edges.includes(tid)) n.edges.push(tid);
+    });
+  });
+  /* 按公司维度：从个股页的 belongs_to 反查它挂在哪些行业下 */
+  const co = {};
+  w.pages.filter(p=> p.kind === 'stock').forEach(p=>{
+    const list = (p.edges && p.edges.belongs_to || []).map(s=> byslug[s]).filter(Boolean);
+    if(list.length) co[p.title.split(' ')[0] || p.slug] = list.map(id=> idx[id].name);
+  });
+  const keep = Object.entries(co).sort((a,b)=> b[1].length - a[1].length).slice(0, 8);
+  if(keep.length){
+    Object.keys(COMPANY_MAP).forEach(k=> delete COMPANY_MAP[k]);
+    keep.forEach(([k, v])=> COMPANY_MAP[k] = v);
+    ATLAS_CO = keep[0][0];
+  }
+}
+
+/* 机密 wiki 原文阅读器 —— 有钥匙才到得了这里。整页原文 + 该页的真实缺口。 */
+async function openWikiPage(slug){
+  if(!realAuthed()) return toast('要老板钥匙才看得到原文');
+  openModal(`<div class="win-bar" style="background:var(--sky)"><span>${slug}</span>
+      <span class="dots" id="mClose" style="cursor:pointer">_ □ ×</span></div>
+    <div style="padding:13px"><div class="t-sm">读取中…</div></div>`);
+  $('#mClose').onclick = closeModal;
+  let d;
+  try{
+    d = await (await fetch(BRIDGE + '/api/wiki_page?slug=' + encodeURIComponent(slug)
+      + '&key=' + encodeURIComponent(VAULT.key), {signal:AbortSignal.timeout(25000)})).json();
+  }catch(e){ d = {ok:false, error:String(e.message || e)}; }
+  if(!d || !d.ok){
+    $('#modalBox').querySelector('div:last-child').innerHTML =
+      `<div class="t-sm t-rose">读不到：${(d && d.error) || '未知错误'}</div>`;
+    return;
+  }
+  const fm = d.fm || {};
+  const gapRow = g=> `<div class="gap-item">
+      <div class="gt"><span class="tag ${g.type === '🔴' ? 'rose' : g.type === '🟠' ? 'gold' : ''}">${g.type || ''} ${g.type_name || ''}</span>
+        <span>${g.title || ''}</span></div>
+      ${g.first_hand ? `<div class="why"><b>一手</b> ${g.first_hand}</div>` : ''}
+      ${g.market_view ? `<div class="why"><b>市场</b> ${g.market_view}</div>` : ''}
+      ${g.investment ? `<div class="why t-cyan"><b>怎么用</b> ${g.investment}</div>` : ''}
+      <div class="why t-dim">${g.as_of || ''} · 强度 ${g.strength ?? '—'} · 把握 ${g.conviction || '—'}</div>
+    </div>`;
+  $('#modalBox').innerHTML = `
+    <div class="win-bar" style="background:var(--sky)">
+      <span>${fm.industry || fm.company || slug}</span>
+      <span class="sub">${d.kind === 'industry' ? '行业页' : '个股页'} · ${(d.bytes/1024).toFixed(0)} KB</span>
+      <span class="dots" id="mClose2" style="cursor:pointer">_ □ ×</span></div>
+    <div style="padding:13px;max-height:74vh;overflow:auto">
+      <div class="row wrap" style="margin-bottom:9px">
+        ${fm.stance ? `<span class="tag ${fm.stance==='bullish'?'cyan':fm.stance==='bearish'?'rose':''}">${fm.stance}</span>` : ''}
+        ${fm.cycle_stage_code ? `<span class="tag">${fm.cycle_stage_code}</span>` : ''}
+        ${fm.market ? `<span class="tag">${fm.market}</span>` : ''}
+        ${fm.updated ? `<span class="t-xs t-dim" style="font-weight:700">更新 ${String(fm.updated).slice(0,10)}</span>` : ''}
+        ${fm.review_by ? `<span class="t-xs t-dim" style="font-weight:700">复核期限 ${fm.review_by}</span>` : ''}
+        <span class="sp"></span>
+        <span class="tag rose" title="本机文件，公网看不到">机密 · 仅本机</span>
+      </div>
+      ${(d.gaps || []).length ? `<div class="cap" style="margin:4px 0 6px">这一页的真实缺口（${d.gaps.length}）</div>
+        ${d.gaps.slice(0, 12).map(gapRow).join('')}` : ''}
+      <div class="cap" style="margin:12px 0 6px">wiki 原文</div>
+      <pre class="minutes" style="font-size:10.5px;white-space:pre-wrap;word-break:break-word;line-height:1.75">${
+        d.content.slice(0, 60000).replace(/[<>&]/g, c=> ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</pre>
+      <div class="t-xs t-dim" style="font-weight:700;margin-top:8px">${d.file}</div>
+    </div>`;
+  $('#mClose2').onclick = closeModal;
+}
+
+/* 数据源机架下半屏的真实版：入库日线 + 信源分布。
+   这里的每个数都能在 ~/knowledge/index/sources.jsonl 里数出来。 */
+function realSrcRegHTML(){
+  const S = REAL.srcreg;
+  const days = (S.recent_days || []).slice(0, 30).reverse();
+  const max = Math.max(1, ...days.map(d=> d.n));
+  const bars = days.map(d=>`<div title="${d.date} — ${d.n} 份" style="flex:1;height:${Math.max(3, d.n/max*80)}px;
+      background:${d.n >= max*0.6 ? 'var(--mustard)' : 'var(--sky)'};
+      box-shadow:inset 0 0 0 2px var(--ink);
+      background-image:repeating-linear-gradient(0deg,transparent 0 4px,rgba(63,43,35,.28) 4px 6px)"></div>`).join('');
+  const chans = (S.channels || []).filter(c=> c.channel !== '_by_date').slice(0, 10);
+  const maxc = Math.max(1, ...chans.map(c=> c.n));
+  const gradeRow = Object.entries(S.grades || {}).sort((a,b)=> b[1]-a[1])
+    .map(([g, n])=> `<span class="tag ${g==='A'?'gold':g==='B'?'cyan':''}" title="${g} 级 ${n} 份">${g} ${n}</span>`).join(' ');
+  /* 断档要明说：最新一份材料到今天隔了几天 */
+  const gapDays = Math.round((Date.now() - new Date(S.latest + 'T00:00:00').getTime()) / 86400000);
+  return `
+    ${win('真实入库日线 · 最近 30 个有入库的日子', `
+      <div style="display:flex;align-items:flex-end;gap:2px;height:80px">${bars}</div>
+      <div class="row t-xs t-dim" style="margin-top:5px;font-weight:700">
+        <span>${days[0] ? days[0].date : ''}</span><span class="sp"></span>
+        <span>${days.length ? days[days.length-1].date : ''}</span></div>
+      <div class="bridge" style="margin-top:9px">
+        最新一份原始材料是 <b>${S.latest}</b>${gapDays > 2
+          ? ` —— 距今 <b class="t-rose">${gapDays} 天</b>，入库已经断档，图上最后几根柱子的空缺不是没画，是真没有。`
+          : '，入库正常。'}</div>`,
+      {color:'sky', sub:`累计 ${S.total.toLocaleString()} 份`})}
+    ${win('真实信源分布', chans.map(c=>`
+      <div class="cover-meter" style="grid-template-columns:132px 1fr 52px">
+        <span style="font-size:11px">${c.label}</span>
+        <span class="px-bar thin"><i style="width:${Math.max(2, c.n/maxc*100)}%;background:var(--${
+          c.bucket==='expert'?'teal':c.bucket==='broker'?'coral':'sky'})"></i></span>
+        <span style="text-align:right">${c.n}</span></div>`).join('') + `
+      <div class="row wrap" style="margin-top:9px;gap:4px">
+        <span class="cap">置信分级</span>${gradeRow}</div>
+      <div class="t-xs t-dim" style="font-weight:700;margin-top:7px;line-height:1.7">
+        另有 ${((S.channels||[]).find(c=> c.channel === '_by_date') || {}).n || 0} 份是早期按日期批量入的，
+        没有 channel 标注 —— 不冒充成某个具体信源，单列。</div>`,
+      {color:'pink', sub:'来自 index/sources.jsonl'})}`;
+}
+
+/* 卡带上的条数：能在注册表里对上号的报真数，对不上的就报「未留痕」。
+   本地行情源（stock_data/akshare/tushare）根本不进知识库，它们没有条数不是故障。 */
+const REAL_SRC_CHANNELS = {
+  acecamp:     ['Expert_Acecamp', 'Analyst_Acecamp', 'acecamp', 'expert_acecamp', 'analyst_acecamp'],
+  thirdbridge: ['Expert_ThirdBridge', 'expert_thirdbridge'],
+  comein:      ['Analyst_Market', 'analyst_market'],
+  cls:         ['media_news'],
+  cninfo:      ['filing'],
+};
+function realSrcCount(id){
+  if(!(typeof REAL !== 'undefined' && REAL.srcreg)) return null;
+  const want = REAL_SRC_CHANNELS[id];
+  if(!want) return {n:null, why:'这个源不入知识库（或入库时没留 channel 标注），注册表里查不到它'};
+  const n = (REAL.srcreg.channels || [])
+    .filter(c=> want.includes(c.channel)).reduce((a, c)=> a + c.n, 0);
+  return {n, why:`sources.jsonl 里 channel ∈ {${want.join(', ')}} 的累计条数`};
+}
+function realCartMeta(s){
+  const r = realSrcCount(s.id);
+  if(!r) return `<span>今日 <b class="t-gold">${s.today}</b> 条</span>`;
+  if(r.n == null) return `<span class="t-dim" title="${r.why}">未留痕</span>`;
+  return `<span title="${r.why}">在册 <b class="t-gold">${r.n.toLocaleString()}</b> 份</span>`;
 }

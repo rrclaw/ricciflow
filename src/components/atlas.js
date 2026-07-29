@@ -81,6 +81,20 @@ const ATLAS_RAW = {
     ['军工电子元器件','元件',3,.6,63,['巨潮资讯公告']]]
 };
 
+/* 真实 wiki 的 parent_sector 有二十来个大类，写死 6 个域会让新域拿不到颜色、
+   覆盖度按 0 个节点算出 NaN。所以域列表与配色都从当前节点集推导。 */
+function atlasDomains(){
+  const seen = [];
+  DATA.atlas.forEach(n=>{ if(!seen.includes(n.domain)) seen.push(n.domain); });
+  return seen;
+}
+const DOMAIN_PALETTE = ['#57bfb4','#7fa8dd','#e9b23c','#ef86ad','#e8535a','#7a8a5e',
+                        '#9b7fd4','#d98b4a','#4fa3a0','#c05fa0','#6f9f5a','#b07a5e'];
+function domainHex(d){
+  if(DOMAIN_HEX[d]) return DOMAIN_HEX[d];
+  let h = 0; for(const ch of String(d)) h = (h * 31 + ch.charCodeAt(0)) & 0xffff;
+  return DOMAIN_PALETTE[h % DOMAIN_PALETTE.length];
+}
 const DOMAIN_COLOR = {'半导体':'var(--teal)','AI算力':'var(--sky)','新能源':'var(--mustard)',
   '消费':'var(--pink)','医药':'var(--coral)','军工':'#7a8a5e'};
 const DOMAIN_HEX = {'半导体':'#57bfb4','AI算力':'#7fa8dd','新能源':'#e9b23c',
@@ -137,7 +151,7 @@ function plotClass(n){
   return 'mid';
 }
 function nodeColor(n){
-  if(ATLAS_DIM === 'industry') return DOMAIN_HEX[n.domain];
+  if(ATLAS_DIM === 'industry') return domainHex(n.domain);
   if(ATLAS_DIM === 'company'){
     const names = COMPANY_MAP[ATLAS_CO] || [];
     return names.includes(n.name) ? '#e9b23c' : '#cfc4b6';
@@ -160,8 +174,13 @@ RENDER.atlas = function(){
   scr.innerHTML = `
     <div class="screen-head">
       <h1>KNOWLEDGE ATLAS</h1>
-      <span class="sub">知识库 · 有点有边，亮的是有货，灰的是黑洞</span>
+      <span class="sub">${typeof REAL !== 'undefined' && REAL.kb
+        ? `本机 ~/knowledge 真图谱 · ${REAL.kb.n_industry} 页行业 + ${REAL.kb.n_stock} 页个股`
+        : '知识库 · 有点有边，亮的是有货，灰的是黑洞'}</span>
       <div class="tools">
+        ${typeof REAL !== 'undefined' && REAL.kb
+          ? `<span class="tag cyan" title="节点=行业 wiki 页；docs=sources.jsonl 标到它头上的原始材料份数；fresh=最近一份距今天数">实盘知识库 · ${REAL.kb.as_of}</span>`
+          : '<span class="demo-mark">编造节点</span>'}
         <button class="px-btn ${ATLAS_VIEW==='map'?'on':''}" data-view="map">▦ MAP</button>
         <button class="px-btn ${ATLAS_VIEW==='graph'?'on':''}" data-view="graph">◈ GRAPH</button>
       </div>
@@ -213,7 +232,7 @@ RENDER.atlas = function(){
 function drawLegend(){
   const box = $('#atlasLegend'); if(!box) return;
   const sets = {
-    industry: Object.keys(DOMAIN_HEX).map(d=>[DOMAIN_HEX[d], d]),
+    industry: atlasDomains().map(d=>[domainHex(d), d]),
     company:  [['#e9b23c','该公司证据链上'],['#cfc4b6','无关节点']],
     conf:     [['#e9b23c','专家一手'],['#57bfb4','卖方 / 公开披露'],['#9b8574','网络二手（只做灰点）'],['#6f6a86','无材料']],
     fresh:    [['#57bfb4','≤30 天'],['#e9b23c','30-90 天'],['#e8535a','>90 天 已陈旧'],['#6f6a86','无材料']]
@@ -227,16 +246,29 @@ function drawMap(){
   /* 三列两排，按舞台实宽铺开，别在右边留一大块空地 */
   const stageW = stage.clientWidth || 900;
   const colW = Math.max(184, Math.floor((stageW - 24) / 3));
-  const order = Object.keys(ATLAS_RAW);
-  Object.keys(ATLAS_RAW).forEach(dom=>{
-    const idx = order.indexOf(dom);
+  /* 真实模式下域有二十来个，节点少的排后面，免得一堆只有一页的域占满第一屏。
+     域数一多就切流式布局，绝对定位那套只在编造的 6 个域下排得开。 */
+  const order = atlasDomains()
+    .map(d=> [d, DATA.atlas.filter(n=> n.domain === d).length])
+    .sort((a, b)=> b[1] - a[1]).map(x=> x[0]);
+  const flow = order.length > 6;
+  stage.classList.toggle('flow', flow);
+  order.forEach((dom, idx)=>{
     const c = el('div','continent');
-    c.style.left = (10 + (idx % 3) * colW) + 'px';
-    c.style.top  = (8 + Math.floor(idx / 3) * 246) + 'px';
+    if(!flow){
+      c.style.left = (10 + (idx % 3) * colW) + 'px';
+      c.style.top  = (8 + Math.floor(idx / 3) * 246) + 'px';
+    }
     const list = DATA.atlas.filter(n=>n.domain===dom);
     const have = list.filter(n=>n.docs>0).length;
-    c.innerHTML = `<div class="cname" style="background:${DOMAIN_HEX[dom]};color:${dom==='新能源'?'var(--ink)':'#fff'}">${dom} ${have}/${list.length}</div>`;
+    c.innerHTML = `<div class="cname" style="background:${domainHex(dom)};color:${dom==='新能源'?'var(--ink)':'#fff'}">${dom} ${have}/${list.length}</div>`;
     const plots = el('div','plots');
+    if(flow){
+      /* 大陆按节点数开列：TMT 有 68 个点，跟只有 2 个点的域用同样列宽会拉成一根面条 */
+      const cols = Math.max(3, Math.min(8, Math.ceil(Math.sqrt(list.length))));
+      plots.style.gridTemplateColumns = `repeat(${cols},34px)`;
+      plots.style.maxWidth = 'none';
+    }
     list.forEach(n=>{
       const p = el('div','plot ' + plotClass(n) + (n.fresh > 180 && n.docs > 0 ? ' stale' : ''));
       if(ATLAS_LAYER === 'raw' && n.validated) p.style.opacity = .25;
@@ -273,8 +305,9 @@ function atlasTip(n){
 
 function openNodeDrawer(n){
   const dep = DATA.atlas.filter(x=> x.edges.includes(n.id));
+  const isReal = !!n.slug;
   openDrawer(`
-    <div class="win-bar" style="background:${DOMAIN_HEX[n.domain]};${n.domain==='新能源'?'color:var(--ink)':''}">
+    <div class="win-bar" style="background:${domainHex(n.domain)}">
       <span>${n.name}</span><span class="dots" id="dwClose" style="cursor:pointer">_ □ ×</span>
     </div>
     <div style="padding:12px">
@@ -282,7 +315,25 @@ function openNodeDrawer(n){
         <span class="tag">${n.domain}</span><span class="tag">${n.layer}</span>
         ${n.docs===0?'<span class="tag rose">黑洞 · 0 篇</span>':`<span class="tag gold">${n.docs} 篇</span>`}
         ${n.fresh>180&&n.docs>0?'<span class="tag rose">已陈旧</span>':''}
+        ${isReal && n.stance ? `<span class="tag ${n.stance==='bullish'?'cyan':n.stance==='bearish'?'rose':''}">${n.stance}</span>` : ''}
+        ${isReal && n.updated ? `<span class="t-xs t-dim" style="font-weight:700">更新于 ${n.updated}</span>` : ''}
       </div>
+      ${isReal ? `
+      <div class="cap" style="margin-bottom:5px">原始材料层</div>
+      <div class="t-sm" style="margin-bottom:11px">
+        ${n.docs ? `<b>${n.docs}</b> 份原始材料标到这个行业头上，最近一份 <b>${n.fresh}</b> 天前 ·
+          来源置信均值 ${(n.conf*100).toFixed(0)}%`
+          : '<span class="t-rose">这一页在，但没有任何原始材料标到它头上 —— 这就是真实缺口</span>'}
+      </div>
+      <div style="background:${n.gaps?'#fdf3d9':'var(--cream2)'};box-shadow:inset 0 0 0 2px var(--ink);padding:7px 8px;margin-bottom:11px">
+        <div class="cap" style="margin-bottom:4px">⚑ 已解析缺口（三方背离账本）</div>
+        ${n.gaps
+          ? `<div class="t-sm" style="font-weight:700">${n.gaps} 条</div>
+             <div class="t-xs t-dim" style="font-weight:700">来自 wiki/_RESOLVED_GAPS.json，一手证据与市场预期不一致的地方</div>`
+          : '<div class="t-xs t-dim" style="font-weight:700">这一页还没有被标出过背离</div>'}
+      </div>
+      <button class="px-btn on dotted" id="btnWikiOpen" style="width:100%;margin-bottom:11px">📖 打开这一页 wiki 原文</button>`
+      : `
       <div class="cap" style="margin-bottom:5px">原始材料层</div>
       <div class="t-sm" style="margin-bottom:11px">${n.sources.length?n.sources.map(s=>`<span class="tag cyan" style="margin:0 3px 3px 0">${s}</span>`).join(''):'<span class="t-rose">无</span>'}</div>
       <div style="background:${n.validated?'#fdf3d9':'var(--cream2)'};box-shadow:inset 0 0 0 2px var(--ink);padding:7px 8px;margin-bottom:11px">
@@ -291,7 +342,7 @@ function openNodeDrawer(n){
           ? `<div class="t-sm" style="font-weight:700">${n.validated} 条已验证结论</div>
              <div class="t-xs t-dim" style="font-weight:700">检索加权 ×2 · 与原始层硬隔离，永不混淆</div>`
           : '<div class="t-xs t-dim" style="font-weight:700">空 · 在研究对话框里「打标沉淀」后出现</div>'}
-      </div>
+      </div>`}
       <div class="cap" style="margin-bottom:5px">下游依赖它的节点（${dep.length}）</div>
       <div class="t-sm" style="margin-bottom:11px">${dep.length?dep.map(d=>`<span class="tag">${d.name}</span>`).join(' '):'<span class="t-dim">无</span>'}</div>
       <hr class="hr" style="margin:12px 0">
@@ -304,6 +355,8 @@ function openNodeDrawer(n){
       </div>
     </div>`);
   $('#dwClose').onclick = closeDrawer;
+  const wo = $('#btnWikiOpen');
+  if(wo) wo.onclick = ()=> openWikiPage(n.slug);
   $$('#dispatchRow [data-r]').forEach(b=> b.onclick = ()=>{
     const r = dispatchTask(b.dataset.r, `补 ${n.name}`);
     b.classList.add('on'); b.textContent = '✓ ' + r.n + ' 已接单';
@@ -333,7 +386,7 @@ function drawGaps(gaps){
 function drawCoverage(){
   const box = $('#coverList'); if(!box) return;
   let sum = 0, cnt = 0;
-  box.innerHTML = Object.keys(ATLAS_RAW).map(dom=>{
+  box.innerHTML = atlasDomains().map(dom=>{
     const list = DATA.atlas.filter(n=>n.domain===dom);
     /* 覆盖度 = 每个节点的「深度 × 时效」取平均。
        只按「有没有材料」算会骗自己：8 个节点各 1 篇陈稿也能算 90%。 */
@@ -343,17 +396,17 @@ function drawCoverage(){
       const decay = n.fresh <= 30 ? 1 : n.fresh <= 90 ? .7 : n.fresh <= 180 ? .4 : .15;
       return a + depth * decay;
     }, 0);
-    const pct = Math.round(score / list.length * 100);
+    const pct = list.length ? Math.round(score / list.length * 100) : 0;
     sum += pct; cnt++;
     return `<div class="cover-meter">
       <span>${dom}</span>
-      <span class="px-bar thin"><i style="width:${pct}%;background:${DOMAIN_HEX[dom]}"></i></span>
+      <span class="px-bar thin"><i style="width:${pct}%;background:${domainHex(dom)}"></i></span>
       <span style="text-align:right">${pct}%</span>
     </div>`;
   }).join('') + `<div class="t-xs t-dim" style="margin-top:7px;line-height:1.6;font-weight:700">
     覆盖度 = 每个节点的「深度 × 时效」取平均。<br>
     只数「有没有材料」会骗自己：8 个节点各 1 篇陈稿也能算 90%。</div>`;
-  $('#tbCover').textContent = Math.round(sum/cnt) + '%';
+  $('#tbCover').textContent = (cnt ? Math.round(sum / cnt) : 0) + '%';
 }
 
 /* ---- GRAPH：60 行 Verlet 力导向，画成像素方块 ---- */

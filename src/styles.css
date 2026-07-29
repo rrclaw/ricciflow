@@ -240,12 +240,19 @@ button{cursor:pointer;background:none;border:none}
    SECTION 4 — 屏2 知识图谱
    ========================================================================== */
 .atlas{display:grid;grid-template-columns:1fr 282px;gap:12px;align-items:start}
-.atlas-stage{position:relative;min-height:474px;overflow:hidden;
+.atlas-stage{position:relative;min-height:474px;overflow:auto;
   background:#eaf1fb;
   background-image:linear-gradient(rgba(127,168,221,.28) 1px,transparent 1px),
                    linear-gradient(90deg,rgba(127,168,221,.28) 1px,transparent 1px);
   background-size:13px 13px}
+/* 真实模式下「大陆」有二十多块、每块节点数差 60 倍，绝对定位排不下。
+   .flow 让它们按内容高度自然流式排布，容器自己滚。 */
 .continent{position:absolute}
+.atlas-stage.flow{position:static;display:flex;flex-wrap:wrap;align-items:flex-start;
+  gap:14px;padding:8px;max-height:620px}
+.atlas-stage.flow .continent{position:static}
+.atlas-stage.flow .plots{grid-template-columns:repeat(auto-fill,34px);
+  max-width:180px}
 .continent .cname{font-size:10px;letter-spacing:.16em;font-weight:700;color:var(--ink);
   background:var(--cream);box-shadow:inset 0 0 0 2px var(--ink);padding:1px 6px;margin-bottom:5px;display:inline-block}
 .plots{display:grid;grid-template-columns:repeat(4,34px);gap:4px}

@@ -21,8 +21,12 @@ RENDER.sources = function(){
   scr.innerHTML = `
     <div class="screen-head">
       <h1>SOURCE RACK</h1>
-      <span class="sub">数据源机架 · 插上卡带就通电</span>
+      <span class="sub">${typeof REAL !== 'undefined' && REAL.srcreg
+        ? `本机知识库真实入库 ${REAL.srcreg.total.toLocaleString()} 条 · 最新 ${REAL.srcreg.latest}`
+        : '数据源机架 · 插上卡带就通电'}</span>
       <div class="tools">
+        ${typeof REAL !== 'undefined' && REAL.srcreg
+          ? '<span class="tag cyan" title="来自 ~/knowledge/index/sources.jsonl">实盘注册表</span>' : ''}
         <button class="px-btn" data-preset="semi">▸ 半导体全家桶</button>
         <button class="px-btn" data-preset="ashare">▸ A股日频最小集</button>
         <button class="px-btn" data-preset="all">▸ 全部拉满</button>
@@ -49,13 +53,14 @@ RENDER.sources = function(){
     </div>
 
     <div class="grid" style="grid-template-columns:1fr 1fr" id="srcBottom">
+      ${typeof REAL !== 'undefined' && REAL.srcreg ? realSrcRegHTML() : `
       ${win('今日入流时间轴',
         `<div id="inflowChart" style="display:flex;align-items:flex-end;gap:2px;height:80px"></div>
          <div class="row t-xs t-dim" style="margin-top:5px;font-weight:700">
            <span>00</span><span class="sp"></span><span>09</span><span class="sp"></span>
            <span>15</span><span class="sp"></span><span>23</span>
          </div>`, {color:'sky', sub:'峰值 15:00 盘后公告 · 23:00 nightly'})}
-      ${win('最近入库','<div id="recentList"></div>',{color:'pink', sub:'写入即打 provenance'})}
+      ${win('最近入库','<div id="recentList"></div>',{color:'pink', sub:'写入即打 provenance'})}`}
     </div>`;
 
   /* 分组 tab（全部 = 一屏看完 16 张卡带） */
@@ -75,8 +80,7 @@ RENDER.sources = function(){
   drawCarts();
   drawPrio();
   drawRackStat();
-  drawInflow();
-  drawRecent();
+  if(!(typeof REAL !== 'undefined' && REAL.srcreg)){ drawInflow(); drawRecent(); }
 
   $$('[data-preset]').forEach(b=> b.onclick = ()=> applyPreset(b.dataset.preset));
 };
@@ -137,7 +141,7 @@ function makeCart(s){
       <div class="slotpins"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
       <div class="meta">
         <span>${freshIcon(s.fresh)}</span>
-        <span>今日 <b class="t-gold">${s.today}</b> 条</span>
+        ${typeof realCartMeta === "function" ? realCartMeta(s) : `<span>今日 <b class="t-gold">${s.today}</b> 条</span>`}
       </div>
       `;
   c.onclick = ()=> openSourceDrawer(s.id);
@@ -169,13 +173,24 @@ function drawPrio(){
 function drawRackStat(){
   const box = $('#rackStat'); if(!box) return;
   const on = DATA.sources.filter(s=>s.on);
-  const todayTotal = on.reduce((a,s)=>a+s.today,0);
   const paid = on.filter(s=>s.locked).length;
   const avgConf = on.length ? (on.reduce((a,s)=>a+s.conf,0)/on.length).toFixed(1) : '0.0';
+  /* 接上真注册表时，「入流」用知识库最近一天的真实入库量，不用卡带上那些编的数 */
+  const R = (typeof REAL !== 'undefined' && REAL.srcreg) ? REAL.srcreg : null;
+  const flow = R
+    ? `<div class="row" style="justify-content:space-between">
+         <span class="t-xs t-dim">最近一天入库</span>
+         <b class="t-gold">${((R.recent_days || [])[0] || {}).n ?? 0} 份</b></div>
+       <div class="row" style="justify-content:space-between">
+         <span class="t-xs t-dim">近 7 天</span><b>${R.last7} 份</b></div>
+       <div class="row" style="justify-content:space-between">
+         <span class="t-xs t-dim">累计在册</span><b>${R.total.toLocaleString()} 份</b></div>`
+    : `<div class="row" style="justify-content:space-between"><span class="t-xs t-dim">今日入流</span>
+         <b class="t-gold">${on.reduce((a,s)=>a+s.today,0).toLocaleString()} 条</b></div>`;
   box.innerHTML = `
     <div class="row" style="justify-content:space-between"><span class="t-xs t-dim">已插卡带</span><b>${on.length} / ${DATA.sources.length}</b></div>
     <div class="px-bar" style="margin:5px 0 9px"><i style="width:${on.length/DATA.sources.length*100}%"></i></div>
-    <div class="row" style="justify-content:space-between"><span class="t-xs t-dim">今日入流</span><b class="t-gold">${todayTotal.toLocaleString()} 条</b></div>
+    ${flow}
     <div class="row" style="justify-content:space-between"><span class="t-xs t-dim">平均置信</span><b>${avgConf} / 5.0</b></div>
     <div class="row" style="justify-content:space-between"><span class="t-xs t-dim">受限源</span><b class="t-rose">${paid} 个</b></div>`;
   syncTopbar();
