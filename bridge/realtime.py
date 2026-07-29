@@ -191,9 +191,12 @@ def substack_feed(url, n=2):
     except Exception as e:
         return {"ok": False, "error": str(e), "items": []}
 
+_epoch_cache = {"at": 0, "data": None}
 def epoch_models(n=2):
-    """Epoch AI 公开数据集 → 最新发布的重要模型（权威 AI 前沿时间线）"""
-    import csv, io
+    """Epoch AI 公开数据集 → 最新发布的重要模型（权威 AI 前沿时间线，缓存30min）"""
+    import csv, io, time as _t
+    if _epoch_cache["data"] and _t.time() - _epoch_cache["at"] < 1800:
+        return {"ok": True, "items": _epoch_cache["data"][:max(n,6)]}
     try:
         handlers = []
         if PROXY:
@@ -212,16 +215,17 @@ def epoch_models(n=2):
         data = [r for r in rows[1:] if di and len(r) > di and r[di]]
         data.sort(key=lambda r: r[di], reverse=True)
         out = []
-        for r in data[:n]:
+        for r in data[:8]:
             model = r[mi]
             org = r[oi] if oi and len(r) > oi else ""
             out.append({
                 "theme": org or _lead_entity(model), "topic": f"{model}（{r[di]} 发布）", "heat": 2,
-                "fresh": True, "src": "Epoch AI·前沿模型",
+                "fresh": True, "src": "Epoch AI·前沿模型", "model": model, "org": org, "date": r[di],
                 "method": f"来自 Epoch AI 公开数据集 notable_ai_models（权威）。"
                           f"{r[di]} {org} 发布 {model}。追前沿模型=追算力/应用的领先指标。",
             })
-        return {"ok": True, "items": out}
+        _epoch_cache["data"] = out; _epoch_cache["at"] = _t.time()
+        return {"ok": True, "items": out[:max(n,6)]}
     except Exception as e:
         return {"ok": False, "error": f"{type(e).__name__}: {e}", "items": []}
 

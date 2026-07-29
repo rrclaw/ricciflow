@@ -166,19 +166,36 @@ def _insight_compute(n=2):
     return out
 
 def _cross_hook(theme, topics):
-    """机构词的引子：在今日 aihot/tmt 标题里找含该词的句子"""
-    for t in topics:
+    """机构热词的话题句：优先交叉当天真实事件（Epoch 新模型/aihot），命中就用事件当钩子。
+    返回吸睛短话题而非百科解释。"""
+    tl = theme.lower()
+    # 1) 交叉当天 Epoch 最新模型（KIMI→Kimi K3 开源）
+    try:
+        if realtime:
+            for it in realtime.epoch_models(6).get("items", []):
+                model = (it.get("model") or "").lower()
+                org = (it.get("org") or "").lower()
+                key = tl.replace(" ", "")
+                if key and (key in model.replace(" ","") or key in org.replace(" ","")
+                            or (key=="kimi" and "kimi" in model)):
+                    return f"{it.get('model')} 刚发布（{it.get('date')}），机构搜索炸了"
+    except Exception:
+        pass
+    # 2) 交叉已给的今日 topics（aihot/tmt）
+    for t in topics or []:
         if theme and theme in t:
             return t
     return ""
 
 _THEME_GLOSS = {
-    "超节点": "华为/国产算力互联架构，对标 NVLink 的整机柜超节点方案",
-    "KIMI": "月之暗面 Kimi 大模型，长上下文/Agent 方向",
-    "小米": "小米汽车/AI/端侧模型相关",
-    "NPO": "近封装光学（Near-Package Optics），CPO 的过渡方案",
-    "液冷": "AI 服务器散热，风冷转液冷的确定性升级",
-    "光芯片磷化铟": "光模块上游 InP 衬底，国产替代窄口",
+    "超节点": "华为超节点对标英伟达 NVL72，国产算力整机柜暗战",
+    "KIMI": "月之暗面 Kimi 系列，国产大模型顶流之一",
+    "小米": "小米 AI 端侧 + 汽车双线，热度不散",
+    "NPO": "近封装光学 NPO，CPO 之前的过渡窄口",
+    "液冷": "AI 服务器液冷，风冷退场的确定性刚需",
+    "光芯片磷化铟": "磷化铟 InP 衬底，光模块上游国产窄口",
+    "存储芯片": "存储超级周期，涨价链最硬的一环",
+    "MLCC陶瓷电容": "MLCC 被动元件涨价，AI 服务器用量翻倍",
 }
 def _plain_hook(theme):
     return _THEME_GLOSS.get(theme, f"机构本周搜索快速升温，具体讨论待展开研究")
