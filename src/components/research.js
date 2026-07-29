@@ -93,10 +93,10 @@ RENDER.research = function(){
       <h1>研究台 · THE DESK OF THE BOSS</h1>
       <span class="sub">灵感 ▸ 初筛 ▸ 快研 ▸ 深研 ▸ 决策 ▸ 跟踪 —— 你只出题和拍板，中间是 AI 员工的事</span>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:stretch">
-      ${win('灵感流', '<div id="ideaFeed" style="height:70vh;overflow-y:auto"></div>', {color:'mustard', sub:'今天世界在聊什么'})}
-      ${win('流水线', '<div id="kanban" style="height:calc(70vh - 18px);overflow:auto"></div>' +
-        '<div class="t-xs t-dim" style="font-weight:700;text-align:center;padding-top:3px">← 左右滑动看完整漏斗 →</div>', {color:'teal', sub:'点票卡进工作台 · 金框=完整样例 · 可横滑'})}
+    <div class="desk-grid">
+      <div class="desk-col">
+      ${win('灵感流', '<div id="ideaFeed"></div>',
+        {color:'mustard', sub:'今天世界在聊什么', cls:'win-fill', attr:' style="flex:1.45"'})}
       ${win('投稿箱', `
           <div class="field"><label>类型</label>
             <div class="opts" id="subType">
@@ -114,7 +114,13 @@ RENDER.research = function(){
           <div class="t-xs t-dim" style="font-weight:700;line-height:1.7;margin-top:10px">
             小道消息、待验证观点、看到的好报告，都能丢进来。<br>
             系统会开一张「交叉验证」票，派给你选的研究员去核。</div>`,
-          {color:'pink', sub:'老板的小道消息也是生产资料', bodyStyle:'height:70vh;overflow-y:auto'})}
+          {color:'pink', sub:'老板的小道消息也是生产资料', cls:'win-fill', attr:' style="flex:1"'})}
+      </div>
+      ${win('流水线',
+        '<div id="kanbanWrap" style="flex:1;min-height:0;overflow:auto"><div id="kanban"></div></div>' +
+        '<div class="t-xs t-dim" id="kanbanHint" style="font-weight:700;text-align:center;padding-top:4px;display:none">← 左右滑动看完整漏斗 →</div>',
+        {color:'teal', sub:'点票卡进工作台 · 金框=完整样例 · 可横滑', cls:'win-fill',
+         bodyStyle:'display:flex;flex-direction:column;min-height:0;overflow:hidden'})}
     </div>`;
   if(typeof renderInsightFeed === 'function') renderInsightFeed($('#ideaFeed'));
   else drawIdeas();
@@ -171,7 +177,9 @@ function bindSubmit(){
 function drawKanban(){
   const kb = $('#kanban'); if(!kb) return;
   kb.innerHTML = '';
-  kb.style.cssText = 'display:grid;grid-template-columns:repeat(6,minmax(104px,1fr));gap:6px;min-width:650px';
+  /* 滚动交给外层 #kanbanWrap；这里只管六列网格（cssText 会整条覆盖内联样式） */
+  kb.style.cssText = 'display:grid;grid-template-columns:repeat(6,minmax(104px,1fr));gap:6px;'
+    + 'min-width:650px;align-content:start';
   STAGES.forEach((st, si)=>{
     const col = el('div');
     col.innerHTML = `<div class="cap" style="border-bottom:3px solid var(--ink);padding-bottom:3px;margin-bottom:7px">
@@ -206,6 +214,9 @@ function drawKanban(){
   $$('[data-tri-kill]').forEach(b=> b.onclick = ()=>{
     const t = tk(b.dataset.triKill); DATA.rejects.push(t);
     DATA.tickets = DATA.tickets.filter(x=>x!==t); drawKanban(); toast('已毙，进弃票堆'); });
+  /* 宽屏六列本来就放得下，横滑提示只在真的溢出时才出现 */
+  const wrap = $('#kanbanWrap'), hint = $('#kanbanHint');
+  if(wrap && hint) hint.style.display = wrap.scrollWidth > wrap.clientWidth + 2 ? '' : 'none';
 }
 function tk(id){ return DATA.tickets.find(t=>t.id===id); }
 
