@@ -213,3 +213,107 @@ function makeAvatar(key, cls){
 }
 function avatarHTML(key, cls){ return makeAvatar(key, cls).outerHTML; }
 
+
+/* ==========================================================================
+   canvas 栅格化：把字符网格 sprite 画到 canvas 上（世界层用）
+   ========================================================================== */
+function drawSpriteOn(ctx, key, x, y, px){
+  const sp = SPRITES[key]; if(!sp) return;
+  sp.rows.forEach((row, ry)=>{
+    for(let rx=0; rx<row.length; rx++){
+      const c = row[rx];
+      if(!c || c==='.' || c===' ') continue;
+      const col = sp.pal[c]; if(!col) continue;
+      ctx.fillStyle = col;
+      ctx.fillRect(x + rx*px, y + ry*px, px, px);
+    }
+  });
+}
+
+/* ---- 老板 16宽×20高 · 4 向 × 2 帧 ----
+   西装 + 咖啡杯。left 由 right 镜像生成。 */
+const BOSS_PAL = {'1':'#2b2436','2':'#f0cfa8','3':'#3f2b23','4':'#233047','5':'#f9ecd6','6':'#e8535a','7':'#6b4a2f'};
+const BOSS_FRAMES = (()=> {
+  const down1 = [
+    '.....111111.....',
+    '....11111111....',
+    '....11111111....',
+    '....12222221....',
+    '....12322321....',
+    '....12222221....',
+    '.....222222.....',
+    '....44444444....',
+    '...4445555444...',
+    '..24445555444.2.',
+    '..24444444444.2.',
+    '...4444444444...',
+    '....444..444....',
+    '....444..444....',
+    '....333..333....',
+    '....333..333....'];
+  const down2 = down1.slice(0,12).concat([
+    '....444.444.....',
+    '...444...444....',
+    '...333...333....',
+    '....333.333.....']);
+  const up1 = down1.map(r=> r.replace(/2322/g,'2222').replace(/232/g,'222'));
+  const up2 = down2.map(r=> r.replace(/2322/g,'2222').replace(/232/g,'222'));
+  const right1 = [
+    '.....111111.....',
+    '....11111111....',
+    '....11111111....',
+    '....12222231....',
+    '....12222331....',
+    '....12222221....',
+    '.....222222.....',
+    '....44444444....',
+    '....4455554.....',
+    '....44555546....',
+    '....444444446...',
+    '....44444444....',
+    '.....444444.....',
+    '.....44..44.....',
+    '.....33..33.....',
+    '.....33..33.....'];
+  const right2 = right1.slice(0,12).concat([
+    '.....44444......',
+    '....44...44.....',
+    '....33...33.....',
+    '.....33.33......']);
+  const mirror = rows => rows.map(r=> r.split('').reverse().join(''));
+  return {
+    down:[down1,down2], up:[up1,up2],
+    right:[right1,right2], left:[mirror(right1), mirror(right2)]
+  };
+})();
+
+function drawBoss(ctx, dir, frame, x, y, px){
+  const rows = BOSS_FRAMES[dir][frame];
+  rows.forEach((row, ry)=>{
+    for(let rx=0; rx<row.length; rx++){
+      const c = row[rx];
+      if(!c || c==='.' || c===' ') continue;
+      const col = BOSS_PAL[c]; if(!col) continue;
+      ctx.fillStyle = col;
+      ctx.fillRect(x + rx*px, y + ry*px, px, px);
+    }
+  });
+}
+
+/* 交易员（绿马甲，交易柜台专属） */
+SPRITES.trader = {
+  rows:[
+    '....1111....',
+    '..11111111..',
+    '.1111111111.',
+    '.1122222211.',
+    '.1222222221.',
+    '.1223223221.',
+    '.1222222221.',
+    '..12233221..',
+    '...222222...',
+    '..55444455..',
+    '.5544444455.',
+    '.444....444.'],
+  pal:{'1':'#3a3a2e','2':'#e8c49b','3':'#3f2b23','4':'#2e6b4f','5':'#e9b23c'}
+};
