@@ -176,7 +176,7 @@ const W_THEMES = {
     bodyBg:'#cfe1f5'
   }
 };
-let WORLD_THEME = localStorage.getItem('rf_theme') || 'classic';
+let WORLD_THEME = localStorage.getItem('rf_theme') || 'fresh';   /* rr 直令：默认清新配色 */
 
 function applyWorldTheme(name){
   WORLD_THEME = W_THEMES[name] ? name : 'classic';
