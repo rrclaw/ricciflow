@@ -49,7 +49,7 @@ body{
   background-size:26px 26px;
   color:var(--ink);
   font-family:ui-monospace,"SF Mono",Menlo,Consolas,"PingFang SC","Microsoft YaHei",monospace;
-  font-size:12px;
+  font-size:13px;
   line-height:1.5;
   letter-spacing:.03em;
   overflow-x:hidden;
@@ -428,3 +428,64 @@ button{cursor:pointer;background:none;border:none}
 /* 沉淀金旗（知识库 MAP 层） */
 .gold-flag{position:absolute;top:-7px;right:-3px;font-size:11px;color:var(--mustard);
   -webkit-text-stroke:1px var(--ink);animation:blinkq 1.8s steps(2) infinite;z-index:5}
+
+/* ==========================================================================
+   可读性层（2026-07-29 rr 直令：字体要清晰）
+   开抗锯齿、系统字体渲染中文、全局字号上调、扑杀 8-10px 内联小字。
+   像素感交给世界层和边框，不再拿文字可读性献祭。
+   ========================================================================== */
+body{
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  letter-spacing: .02em;
+}
+.t-xs{font-size:11.5px}
+.t-sm{font-size:12.5px}
+.cap{font-size:11px;letter-spacing:.14em}
+.tag{font-size:10.5px;padding:2px 6px}
+.demo-mark{font-size:9.5px}
+.gap-item .gt{font-size:12px}
+.gap-item .why{font-size:11px;line-height:1.65}
+.logline{font-size:11.5px}
+.stat3 .k{font-size:9.5px}
+.stat3 .v{font-size:14px}
+.chip{font-size:10.5px;padding:3px 7px}
+.sld{font-size:10.5px}
+.saybox{font-size:11.5px}
+.motto{font-size:11px}
+.note{font-size:10.5px}
+.note b{font-size:10.5px}
+.minutes{font-size:11.5px}
+.minutes h4{font-size:13px}
+.bridge{font-size:11px}
+.clash .side{font-size:11px}
+.flownode{font-size:10.5px}
+.steps .st{font-size:10.5px}
+.gossip{font-size:10.5px}
+.taskchip{font-size:10.5px}
+.cart .nm{font-size:13px}
+.cart .meta{font-size:10.5px}
+.rcard .rname{font-size:14px}
+.rcard .rproto{font-size:10.5px}
+.redline .txt{font-size:12px}
+.redline .txt small{font-size:10.5px}
+.field label{font-size:10.5px}
+.field .opt{font-size:11px}
+.inp{font-size:12.5px}
+.console{font-size:11px}
+.win-bar{font-size:12px}
+.win-bar .sub{font-size:10.5px}
+.px-btn{font-size:12px}
+.px-btn.sm{font-size:11px}
+.door .dname{font-size:14px}
+.door .dmeta{font-size:10.5px}
+.seat .who{font-size:10.5px}
+.bubble{font-size:10.5px}
+.cover-meter{font-size:11px}
+.legend{font-size:10.5px}
+.prio-chain .lnk{font-size:11px}
+/* 扑杀内联超小字号（!important 干得过内联） */
+[style*="font-size:8px"]{font-size:10px !important}
+[style*="font-size:9px"]{font-size:11px !important}
+[style*="font-size:10px"]{font-size:11.5px !important}
+[style*="font-size:11px"]{font-size:12px !important}

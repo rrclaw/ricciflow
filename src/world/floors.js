@@ -30,7 +30,7 @@ function npcRoom(id){
   if(npc.poach) F.push({id:'npc_poach', tx:10, ty:3, tw:2, th:2, solid:false,
     label:'挖这个人', onUse:()=> npcPoach(id),
     paint:(ctx,x,y)=>{ drawSpriteOn(ctx, npc.poach.sp, x + 8, y + 6, 2);
-      ctx.fillStyle = W_PAL.mustard; ctx.font='bold 8px monospace';
+      ctx.fillStyle = W_PAL.mustard; ctx.font='bold 13px monospace';
       ctx.fillText('TOP GUN', x + 4, y + 58); }});
   F.push({id:'back', tx:6, ty:8, tw:2, th:1, solid:false,
     label:'回电梯厅', onUse:()=> enterFloors()});
@@ -39,7 +39,7 @@ function npcRoom(id){
     paintBase:(ctx, hour)=>{
       ctx.fillStyle = W_PAL.ink; ctx.fillRect(3*TILE, 6, 8*TILE, 22*1);
       ctx.fillStyle = npc.color; ctx.fillRect(3*TILE+3, 9, 8*TILE-6, 16);
-      ctx.fillStyle = '#fff'; ctx.font = 'bold 11px monospace';
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 13px monospace';
       ctx.fillText(npc.n + ' · ' + (id==='citadel'?'77F':'52F'), 3*TILE + 12, 21);
       paintWindow(ctx, 10*TILE, TILE + 6, 3*TILE, TILE + 10, hour);
       paintPlant(ctx, TILE, 7*TILE, 0);
@@ -132,13 +132,13 @@ function floorsRoom(){
         ctx.fillStyle = '#9aa3ad'; ctx.fillRect(x, y + 3, 2*TILE, 2*TILE + 12);
         ctx.fillStyle = W_PAL.ink; ctx.fillRect(x + TILE - 2, y + 3, 4, 2*TILE + 12);
         ctx.fillStyle = c; ctx.fillRect(x, y - 2, 2*TILE, 10);
-        ctx.fillStyle = '#fff'; ctx.font = 'bold 8px monospace';
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 13px monospace';
         ctx.fillText(name, x + 3, y + 6, 2*TILE - 6);
       });
       /* 楼层指示牌 */
       ctx.fillStyle = W_PAL.ink; ctx.fillRect(13*TILE + 6, 3*TILE, 40, 60);
       ctx.fillStyle = W_PAL.cream; ctx.fillRect(13*TILE + 9, 3*TILE + 3, 34, 54);
-      ctx.fillStyle = W_PAL.ink; ctx.font = 'bold 7px monospace';
+      ctx.fillStyle = W_PAL.ink; ctx.font = 'bold 13px monospace';
       ['118F 观光','77F 城堡','68F 里奇流','52F 断桥','1F 大堂'].forEach((s,i)=>
         ctx.fillText(s, 13*TILE + 11, 3*TILE + 13 + i*10));
       paintRug(ctx, 5*TILE, 5*TILE, 5*TILE, 2*TILE);

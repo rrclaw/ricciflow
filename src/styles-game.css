@@ -182,3 +182,12 @@ html { overscroll-behavior: none; }
   .panel-body [style*="grid-template-columns"] > * { min-width: 0; max-width: 100%; }
   .panel-body .win, .panel-body .win > .in { min-width: 0; max-width: 100%; }
 }
+
+/* 可读性层：游戏壳 */
+.game-topbar{font-size:12px}
+.gt-stat{font-size:11px}
+.hud-item .name{font-size:10.5px}
+.hud-item .ico{font-size:15px}
+.interact-hint{font-size:12.5px;padding:4px 10px}
+.guide-body{font-size:13px}
+.panel-foot{font-size:11px}

@@ -58,7 +58,7 @@ function isoSign(ctx, box, text, bg, fg){
   const w = Math.max(64, text.length * 12 + 14);
   ctx.fillStyle = W_PAL.ink; ctx.fillRect(cx - w/2 - 2, cy - 26, w + 4, 20);
   ctx.fillStyle = bg || W_PAL.cream; ctx.fillRect(cx - w/2, cy - 24, w, 16);
-  ctx.fillStyle = fg || W_PAL.ink; ctx.font = 'bold 11px monospace';
+  ctx.fillStyle = fg || W_PAL.ink; ctx.font = 'bold 13px monospace';
   ctx.textAlign = 'center'; ctx.fillText(text, cx, cy - 12); ctx.textAlign = 'left';
 }
 
@@ -73,7 +73,7 @@ const ISO_STYLES = {
     /* 我方横幅 */
     const p = isoPt(b.ix + 1.2, b.iy + 2.4);
     ctx.fillStyle = W_PAL.coral; ctx.fillRect(p[0] - 62, p[1] - 132, 124, 18);
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 11px monospace'; ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 13px monospace'; ctx.textAlign = 'center';
     ctx.fillText('▲ 里奇流资本 68F', p[0], p[1] - 119); ctx.textAlign = 'left';
     return box;
   },
@@ -371,12 +371,12 @@ function cityRoom(){
         const wp = I.waterSide === 'n' ? g(I.w * .5, -2.2) : g(I.w + 1.6, I.d * .4);
         ctx.fillStyle = 'rgba(244,239,228,.92)'; ctx.font = 'bold 13px monospace';
         ctx.textAlign = 'center'; ctx.fillText(I.water, wp[0], wp[1]);
-        ctx.font = '10px monospace'; ctx.fillStyle = 'rgba(244,239,228,.65)';
+        ctx.font = '12px monospace'; ctx.fillStyle = 'rgba(244,239,228,.65)';
         ctx.fillText(I.coord, wp[0], wp[1] + 14); ctx.textAlign = 'left';
         /* 区牌 */
         const dp = g(I.w * .5, -0.9);
         ctx.fillStyle = W_PAL.ink; ctx.fillRect(dp[0] - 52, dp[1] - 14, 104, 20);
-        ctx.fillStyle = W_PAL.cream; ctx.font = 'bold 12px monospace';
+        ctx.fillStyle = W_PAL.cream; ctx.font = 'bold 13px monospace';
         ctx.textAlign = 'center'; ctx.fillText(I.n, dp[0], dp[1]); ctx.textAlign = 'left';
       });
       /* 规划中的幽灵岛（东京/首尔/硅谷/孟买） */
@@ -390,10 +390,10 @@ function cityRoom(){
         ctx.moveTo(f.cx - 74, f.cy); ctx.lineTo(f.cx, f.cy - 37);
         ctx.lineTo(f.cx + 74, f.cy); ctx.lineTo(f.cx, f.cy + 37); ctx.closePath();
         ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillStyle = 'rgba(63,43,35,.75)'; ctx.font = 'bold 11px monospace';
+        ctx.fillStyle = 'rgba(63,43,35,.75)'; ctx.font = 'bold 13px monospace';
         ctx.textAlign = 'center';
         ctx.fillText(f.n + ' · 规划中', f.cx, f.cy + 2);
-        ctx.font = '9px monospace';
+        ctx.font = '11px monospace';
         ctx.fillText(f.coord, f.cx, f.cy + 15); ctx.textAlign = 'left';
       });
       /* 水上交通装饰 */
@@ -546,7 +546,7 @@ function venueRoom(key){
       /* 店招 */
       ctx.fillStyle = W_PAL.ink; ctx.fillRect(3*TILE, 6, 7*TILE, 26);
       ctx.fillStyle = V.accent; ctx.fillRect(3*TILE + 3, 9, 7*TILE - 6, 20);
-      ctx.fillStyle = '#fff'; ctx.font = 'bold 12px monospace';
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 13px monospace';
       ctx.textAlign = 'center'; ctx.fillText(V.n, 6.5*TILE, 23); ctx.textAlign = 'left';
       paintWindow(ctx, 10.6*TILE, TILE - 8, 2*TILE, TILE + 12, hour);
       /* 桌椅 + 坐着的人 */
@@ -561,7 +561,7 @@ function venueRoom(key){
       paintPlant(ctx, TILE - 8, 6*TILE, 0);
       /* 出口垫 */
       ctx.fillStyle = W_PAL.mustard; ctx.fillRect(5.6*TILE, 8*TILE + 16, 60, 8);
-      ctx.fillStyle = W_PAL.ink; ctx.font = 'bold 8px monospace';
+      ctx.fillStyle = W_PAL.ink; ctx.font = 'bold 13px monospace';
       ctx.fillText('EXIT → 街上', 5.7*TILE, 8*TILE + 12);
     },
     paintDynamic:(ctx, now)=>{
@@ -574,7 +574,7 @@ function venueRoom(key){
       const w = Math.min(300, line.length * 11 + 16);
       ctx.fillStyle = W_PAL.ink; ctx.fillRect(bx - 2, by - 2, w + 4, 22);
       ctx.fillStyle = '#fff8e8'; ctx.fillRect(bx, by, w, 18);
-      ctx.fillStyle = W_PAL.ink; ctx.font = 'bold 10px monospace';
+      ctx.fillStyle = W_PAL.ink; ctx.font = 'bold 13px monospace';
       ctx.fillText(line, bx + 6, by + 13, w - 10);
       /* 小尾巴 */
       ctx.fillStyle = '#fff8e8'; ctx.fillRect(bx + 12, by + 18, 6, 6);

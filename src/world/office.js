@@ -16,18 +16,18 @@ function officeRoom(){
       const hh = 6 + (i * 13) % 18;
       ctx.fillRect(cx, y + 2*TILE - 26 - hh, 4, hh);
     }
-    ctx.fillStyle = W_PAL.screenGlow; ctx.font = 'bold 9px monospace';
+    ctx.fillStyle = W_PAL.screenGlow; ctx.font = 'bold 13px monospace';
     ctx.fillText('SOURCE RACK 12/16 ▲', x + 14, y + 22);
   };
 
   const paintSign = (ctx, x, y)=>{
     ctx.fillStyle = W_PAL.ink; ctx.fillRect(x + 2, y + 8, 4*TILE - 4, 2*TILE - 20);
     ctx.fillStyle = W_PAL.cream; ctx.fillRect(x + 6, y + 12, 4*TILE - 12, 2*TILE - 28);
-    ctx.fillStyle = W_PAL.coral; ctx.font = 'bold 11px monospace';
+    ctx.fillStyle = W_PAL.coral; ctx.font = 'bold 13px monospace';
     ctx.fillText('RICCI FLOW', x + 14, y + 28);
-    ctx.fillStyle = W_PAL.ink; ctx.font = 'bold 8px monospace';
+    ctx.fillStyle = W_PAL.ink; ctx.font = 'bold 13px monospace';
     ctx.fillText('里 奇 流 资 本', x + 13, y + 40);
-    ctx.font = '7px monospace'; ctx.fillStyle = '#8a7460';
+    ctx.font = '11px monospace'; ctx.fillStyle = '#8a7460';
     ctx.fillText('曲率即命运', x + 26, y + 50);
   };
 
@@ -35,7 +35,7 @@ function officeRoom(){
     ctx.fillStyle = W_PAL.ink; ctx.fillRect(x + 4, y + 4, 3*TILE - 8, 2*TILE - 6);
     ctx.fillStyle = '#6e4a28'; ctx.fillRect(x + 8, y + 8, 3*TILE - 16, 2*TILE - 12);
     ctx.fillStyle = W_PAL.mustard; ctx.fillRect(x + 3*TILE - 22, y + TILE + 2, 5, 5);
-    ctx.fillStyle = W_PAL.cream; ctx.font = 'bold 8px monospace';
+    ctx.fillStyle = W_PAL.cream; ctx.font = 'bold 13px monospace';
     ctx.fillText('WAR ROOM', x + 14, y + 16);
   };
 
@@ -95,7 +95,7 @@ function officeRoom(){
   const paintTradeDesk = (ctx, x, y)=>{
     ctx.fillStyle = W_PAL.ink; ctx.fillRect(x, y + 8, 4*TILE, TILE);
     ctx.fillStyle = '#2e6b4f'; ctx.fillRect(x + 3, y + 11, 4*TILE - 6, TILE - 6);
-    ctx.fillStyle = W_PAL.cream; ctx.font = 'bold 8px monospace';
+    ctx.fillStyle = W_PAL.cream; ctx.font = 'bold 13px monospace';
     ctx.fillText('TRADING', x + 34, y + 26);
     /* 交易员站柜台后 */
     drawSpriteOn(ctx, 'trader', x + 4*TILE - 34, y - 14, 2);
@@ -146,7 +146,7 @@ function officeRoom(){
       ctx.fillStyle = W_PAL.ink; ctx.fillRect(dx - 6, dy - TILE + 6, 2*TILE + 12, TILE + 24);
       ctx.fillStyle = '#6e4a28'; ctx.fillRect(dx, dy - TILE + 12, 2*TILE, TILE + 18);
       ctx.fillStyle = W_PAL.mustard; ctx.fillRect(dx + TILE - 5, dy - 6, 10, 6);
-      ctx.fillStyle = W_PAL.cream; ctx.font = 'bold 8px monospace';
+      ctx.fillStyle = W_PAL.cream; ctx.font = 'bold 13px monospace';
       ctx.fillText('EXIT', dx + TILE - 16, dy - TILE + 26);
     },
     paintDynamic:(ctx, now)=>{
@@ -158,7 +158,7 @@ function officeRoom(){
         ctx.fillStyle = W_PAL.cream;
         ctx.fillRect(sx*TILE + 40, sy*TILE, 26, 14);
         ctx.fillStyle = W_PAL.ink;
-        ctx.font = 'bold 9px monospace';
+        ctx.font = 'bold 13px monospace';
         ctx.fillText('...', sx*TILE + 46, sy*TILE + 11);
       }
     },
