@@ -8,7 +8,8 @@ const BLDG = {
   media: {n:'媒体大楼 · 新闻公告库', color:'mustard', desc:'公告 · 财联社 · 海外媒体'},
   archive:{n:'待分拣仓库',           color:'ink',   desc:'楼宇归属待打标的存量'}
 };
-const BRIDGE = 'http://127.0.0.1:8331';
+const BRIDGE = (location.hostname === '127.0.0.1' || location.hostname === 'localhost' || location.protocol === 'file:')
+  ? 'http://127.0.0.1:8331' : '/kbapi';
 let VAULT = { key: localStorage.getItem('rf_boss_key') || '', live: false, checked: false };
 
 async function vaultProbe(){
@@ -29,16 +30,16 @@ function openVault(onOk){
       <span class="dots" id="mClose" style="cursor:pointer">_ □ ×</span></div>
     <div style="padding:14px;text-align:center">
       <div class="vault-dial" id="vaultDial"><i></i></div>
-      <div class="vault-display" id="vaultDisp">— — — — — —</div>
+      <div class="vault-display" id="vaultDisp"></div>
       <div class="vault-pad">
         ${[1,2,3,4,5,6,7,8,9,'C',0,'⏎'].map(k=>`<button class="vault-key" data-vk="${k}">${k}</button>`).join('')}
       </div>
       <div class="t-xs t-dim" style="font-weight:700;margin-top:9px;line-height:1.7" id="vaultHint">
-        真实模式钥匙在本机终端：启动 kb-bridge 时打印。<br>没跑桥？随便输 6 位可进演示模式。</div>
+        老板钥匙 10 位（kb-bridge 启动时打印在你的终端）。<br>公网也认：验证走 TLS，连错 5 次封 IP 15 分钟。<br>没跑桥？随便输 ≥4 位进演示模式。</div>
     </div>`);
   $('#mClose').onclick = closeModal;
   const disp = ()=> $('#vaultDisp').textContent =
-    (buf + '——————'.slice(buf.length)).split('').join(' ');
+    (buf + '—'.repeat(Math.max(0, 10 - buf.length))).split('').join(' ');
   $$('.vault-key').forEach(b=> b.onclick = async ()=>{
     const k = b.dataset.vk;
     const dial = $('#vaultDial');
@@ -63,7 +64,7 @@ function openVault(onOk){
       if(onOk) onOk();
       return;
     }
-    if(buf.length < 6){ buf += k; disp(); }
+    if(buf.length < 10){ buf += k; disp(); }
   });
   disp();
 }

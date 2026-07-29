@@ -9,6 +9,7 @@
 
 零依赖：stdlib http.server。
 """
+import hmac
 import http.server
 import json
 import random
@@ -23,9 +24,26 @@ KEY_FILE = HERE / "boss.key"
 CARRY_FILE = HERE / "carried.jsonl"
 PORT = 8331
 
-if not KEY_FILE.exists():
-    KEY_FILE.write_text("".join(random.choice("0123456789") for _ in range(6)))
+def _gen_key():
+    return "".join(random.SystemRandom().choice("0123456789") for _ in range(10))
+if not KEY_FILE.exists() or len(KEY_FILE.read_text().strip()) < 10:
+    KEY_FILE.write_text(_gen_key())          # 公网可达 → 至少 10 位
 BOSS_KEY = KEY_FILE.read_text().strip()
+
+# 暴力破解防线：每 IP 连错 5 次封 15 分钟
+FAILS = {}          # ip -> [count, banned_until]
+def ip_ok(ip):
+    c = FAILS.get(ip)
+    if not c: return True
+    return not (c[0] >= 5 and time.time() < c[1])
+def ip_fail(ip):
+    c = FAILS.setdefault(ip, [0, 0])
+    c[0] += 1
+    if c[0] >= 5:
+        c[1] = time.time() + 900
+        print(f"[SEC] {ip} 连错 5 次，封禁 15 分钟")
+def ip_pass(ip):
+    FAILS.pop(ip, None)
 
 # ---------------- 楼宇分拣规则（只读虚拟打标，不改动知识库本体） ----------------
 BROKER_HINTS = ["研报", "点评", "sell", "sellside", "sell_side", "券商", "首次覆盖", "深度报告",
@@ -124,17 +142,30 @@ class H(http.server.BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _auth(self):
+        ip = (self.headers.get("CF-Connecting-IP") or
+              self.headers.get("X-Forwarded-For", "").split(",")[0].strip() or
+              self.client_address[0])
+        if not ip_ok(ip):
+            return False
         q = parse_qs(urlparse(self.path).query)
         tok = (self.headers.get("Authorization", "").replace("Bearer ", "") or
                (q.get("key") or [""])[0])
-        return tok == BOSS_KEY
+        ok = hmac.compare_digest(tok, BOSS_KEY)
+        if ok: ip_pass(ip)
+        elif tok: ip_fail(ip)
+        return ok
 
     def do_OPTIONS(self):
         self._send(200, {})
 
     def log_message(self, *a): pass
 
+    def _norm(self):
+        if self.path.startswith("/kbapi/"):
+            self.path = self.path[len("/kbapi"):]
+
     def do_GET(self):
+        self._norm()
         u = urlparse(self.path); q = parse_qs(u.query)
         if u.path == "/api/health":
             return self._send(200, {"ok": True, "docs": len(DOCS), "auth": self._auth()})
@@ -175,6 +206,7 @@ class H(http.server.BaseHTTPRequestHandler):
         self._send(404, {"error": "not found"})
 
     def do_POST(self):
+        self._norm()
         if not self._auth():
             return self._send(401, {"error": "no key"})
         u = urlparse(self.path)
