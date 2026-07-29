@@ -159,8 +159,63 @@ worldCanvas.addEventListener('touchend', e=>{
   if(f && dist(WALK.x, WALK.y, fCenter(f).x, fCenter(f).y) < TILE * 3.2){
     triggerFurniture(f); return;
   }
-  WALK.target = {x: mx, y: my, furn: f || null};
+  setWalkTarget(mx, my, f);
 });
+
+/* ---------- BFS 寻路（网格小，负担可忽略；点击=沿路径走） ---------- */
+function findPath(stx, sty, ttx, tty){
+  const r = WALK.room;
+  if(ttx < 0 || tty < 0 || ttx >= r.gw || tty >= r.gh) return null;
+  /* 目标在碰撞体里 → 螺旋找最近可站格 */
+  if(r.solid[tty][ttx]){
+    let best = null, bd = 1e9;
+    for(let rad = 1; rad < 8 && !best; rad++)
+      for(let dy = -rad; dy <= rad; dy++)
+        for(let dx = -rad; dx <= rad; dx++){
+          const x = ttx + dx, y = tty + dy;
+          if(x < 0 || y < 0 || x >= r.gw || y >= r.gh || r.solid[y][x]) continue;
+          const d = dx*dx + dy*dy;
+          if(d < bd){ bd = d; best = [x, y]; }
+        }
+    if(!best) return null;
+    [ttx, tty] = best;
+  }
+  const key = (x, y)=> y * r.gw + x;
+  const prev = new Map();
+  const q = [[stx, sty]];
+  prev.set(key(stx, sty), null);
+  while(q.length){
+    const [cx, cy] = q.shift();
+    if(cx === ttx && cy === tty){
+      const path = [];
+      let k = key(cx, cy);
+      let cur = [cx, cy];
+      while(cur){
+        path.unshift(cur);
+        const pk = prev.get(key(cur[0], cur[1]));
+        cur = pk;
+      }
+      path.shift();                      /* 去掉起点 */
+      return path;
+    }
+    [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dy])=>{
+      const nx = cx + dx, ny = cy + dy;
+      if(nx < 0 || ny < 0 || nx >= r.gw || ny >= r.gh) return;
+      if(r.solid[ny][nx] || prev.has(key(nx, ny))) return;
+      prev.set(key(nx, ny), [cx, cy]);
+      q.push([nx, ny]);
+    });
+  }
+  return null;
+}
+
+function setWalkTarget(mx, my, furn){
+  const path = findPath(Math.floor(WALK.x / TILE), Math.floor(WALK.y / TILE),
+                        Math.floor(mx / TILE), Math.floor(my / TILE));
+  if(!path){ toast('走不过去，那边被挡死了'); return; }
+  WALK.path = path;
+  WALK.target = {x: mx, y: my, furn: furn || null};
+}
 
 function solidAt(px, py){
   const r = WALK.room;
@@ -180,7 +235,7 @@ addEventListener('keydown', e=>{
   if(WALK.paused || !GAME.guideDone) return;
   const k = e.key.toLowerCase();
   if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)){
-    WALK.keys[k] = true; WALK.target = null; e.preventDefault();
+    WALK.keys[k] = true; WALK.target = null; WALK.path = null; e.preventDefault();
   }
   if(k === 'e' && WALK.nearFurn) triggerFurniture(WALK.nearFurn);
   if(k === '0'){ CAM.zoom = 1; centerCam(); }        /* 归位 */
@@ -220,19 +275,52 @@ function loop(){
     if(K['w'] || K['arrowup'])    mvy -= SPEED;
     if(K['s'] || K['arrowdown'])  mvy += SPEED;
     if(!mvx && !mvy && WALK.target){
-      const dx = WALK.target.x - WALK.x, dy = WALK.target.y - WALK.y;
-      if(Math.abs(dx) > 3) mvx = Math.sign(dx) * SPEED;
-      else if(Math.abs(dy) > 3) mvy = Math.sign(dy) * SPEED;
-      else {
-        if(WALK.target.furn) triggerFurniture(WALK.target.furn);
-        WALK.target = null;
+      /* 目标是家具：走到附近直接触发（不必抵达点击点） */
+      if(WALK.target.furn){
+        const c = fCenter(WALK.target.furn);
+        if(dist(WALK.x, WALK.y, c.x, c.y) < TILE * 3.6){
+          const f = WALK.target.furn; WALK.target = null; WALK.path = null;
+          triggerFurniture(f);
+        }
+      }
+      if(WALK.target && WALK.path && WALK.path.length){
+        /* 沿 BFS 路径逐格走 */
+        const [wtx, wty] = WALK.path[0];
+        const wx = wtx * TILE + TILE/2, wy = wty * TILE + TILE/2;
+        const dx = wx - WALK.x, dy = wy - WALK.y;
+        if(Math.abs(dx) <= 3 && Math.abs(dy) <= 3) WALK.path.shift();
+        else {
+          if(Math.abs(dx) > 3) mvx = Math.sign(dx) * SPEED;
+          if(Math.abs(dy) > 3) mvy = Math.sign(dy) * SPEED;
+          if(mvx && mvy){ mvx *= .72; mvy *= .72; }
+        }
+      } else if(WALK.target){
+        /* 路径走完：最后一小段直线逼近或收尾 */
+        const dx = WALK.target.x - WALK.x, dy = WALK.target.y - WALK.y;
+        if(Math.abs(dx) > 3) mvx = Math.sign(dx) * SPEED;
+        if(Math.abs(dy) > 3) mvy = Math.sign(dy) * SPEED;
+        if(mvx && mvy){ mvx *= .72; mvy *= .72; }
+        if(!mvx && !mvy){
+          if(WALK.target.furn) triggerFurniture(WALK.target.furn);
+          WALK.target = null;
+        }
       }
     }
   }
   if(mvx || mvy){
     const ox = WALK.x, oy = WALK.y;
     tryMove(mvx, 0); tryMove(0, mvy);
-    if(WALK.x === ox && WALK.y === oy && WALK.target) WALK.target = null;
+    if(WALK.x === ox && WALK.y === oy && WALK.target){
+      /* 撞墙走不动：如果目标家具就在旁边，直接触发再放弃 */
+      if(WALK.target.furn){
+        const c = fCenter(WALK.target.furn);
+        if(dist(WALK.x, WALK.y, c.x, c.y) < TILE * 5.5){
+          const f = WALK.target.furn; WALK.target = null;
+          triggerFurniture(f);
+        }
+      }
+      WALK.target = null;
+    }
     WALK.dir = Math.abs(mvx) >= Math.abs(mvy)
       ? (mvx < 0 ? 'left' : mvx > 0 ? 'right' : WALK.dir)
       : (mvy < 0 ? 'up' : 'down');

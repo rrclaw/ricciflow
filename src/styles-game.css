@@ -122,3 +122,63 @@ body.theme-fresh .gt-stat { color: #7d6a52; }
 body.theme-fresh .gt-stat b { color: var(--ink); }
 body.theme-fresh .gt-loc { color: #b8791b; }
 body.theme-fresh .hud { background: rgba(249, 236, 214, .92); }
+
+/* ==========================================================================
+   手机端适配（≤760px）
+   ========================================================================== */
+#world { touch-action: none; }
+html { overscroll-behavior: none; }
+
+@media (max-width: 760px) {
+  /* 顶栏：只留品牌 + 位置 + 配色，数据统计藏起来 */
+  .game-topbar { gap: 8px; padding: 5px 8px; }
+  .game-topbar .gt-stat { display: none; }
+  .gt-brand { font-size: 10px; padding: 2px 5px; }
+  .gt-loc { font-size: 9px; max-width: 40vw; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; }
+
+  /* HUD：横向滑动条，贴安全区 */
+  .hud { left: 8px; right: 8px; transform: none; bottom: calc(6px + env(safe-area-inset-bottom));
+    overflow-x: auto; overflow-y: hidden; justify-content: flex-start;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .hud::-webkit-scrollbar { display: none; }
+  .hud-item { min-width: 56px; height: 44px; flex: none; }
+  .hud-item .hint { display: none !important; }   /* 触屏没有 hover */
+
+  /* 组件面板：全屏 */
+  .panel { top: 34px; left: 0; transform: none; width: 100vw;
+    height: calc(100vh - 34px); height: calc(100dvh - 34px); }
+  .panel.open { animation: none; }
+  .panel-body { padding: 8px; }
+  .panel-foot { font-size: 8px; padding: 5px 8px; }
+
+  /* 大杀器：所有写死多列的内联 grid 一律压成单列（!important 干得过内联样式） */
+  .panel-body [style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
+
+  /* 例外：流水线看板保持 6 列，滚动交给 win-body 容器（单列会毁掉漏斗语义） */
+  #kanban { grid-template-columns: repeat(6, minmax(150px, 1fr)) !important; min-width: 940px; }
+  .win-body { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* 场景舞台：允许横滑看全场 */
+  .stage { overflow-x: auto; }
+  .screen-head h1 { font-size: 12px; }
+  .screen-head .tools { width: 100%; }
+  .screen-head .tools .px-btn { padding: 4px 8px; font-size: 10px; }
+
+  /* 窄抽屉全宽 */
+  .drawer { top: 0; right: 0; bottom: 0; left: 0; width: 100vw; max-width: none; }
+
+  /* 引导卡 */
+  .guide-box { padding: 13px; }
+  .guide-body { font-size: 11px; line-height: 1.9; }
+
+  /* 弹窗 */
+  .modal { padding: 8px; }
+  .modal .wrap { width: 96vw; }
+}
+
+@media (max-width: 760px) {
+  /* grid 吹爆修正：1fr 轨道不许被内容撑开，滚动发生在 win-body 内部 */
+  .panel-body [style*="grid-template-columns"] > * { min-width: 0; max-width: 100%; }
+  .panel-body .win, .panel-body .win > .in { min-width: 0; max-width: 100%; }
+}

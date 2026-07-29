@@ -453,7 +453,9 @@ function openResearcherPanel(id){
             <div class="cap" style="margin:4px 0">对今日议题的发言（拖滑块看他改口）</div>
             <div class="saybox" id="say-${r.id}">${sayOf(r)}</div>
             <div class="cap" style="margin:8px 0 4px">关注因子</div>
-            <div class="chips">${r.factors.map((f,i)=>`<span class="chip ${i<3?'on':''}">${f}</span>`).join('')}</div>`,
+            <div class="chips">${r.factors.map((f,i)=>`<span class="chip ${i<3?'on':''}">${f}</span>`).join('')}</div>
+            ${r.creed ? `<div class="bridge" style="margin-top:8px">信条 · ${r.creed}</div>` : ''}
+            <button class="px-btn on dotted" id="soulEdit" style="width:100%;margin-top:9px">✎ 编辑灵魂文件（SOUL.md）</button>`,
             {color:'pink'})}
           ${win('任务收件箱', `
             <div id="inbox-${r.id}">
@@ -478,6 +480,18 @@ function openResearcherPanel(id){
                 <div><div class="k">贡献</div><div class="v">${rv.contrib ?? '—'}</div></div>
                 <div><div class="k">纪律</div><div class="v">${rv.disc ?? '—'}</div></div>
               </div>`, {color:'teal', sub:'他的仓位不是公司的仓位——考核用'})}
+          ${win('模拟仓 · 买卖建议时间轴', (DATA.trades[id] && DATA.trades[id].length)
+            ? DATA.trades[id].map(td=>`
+              <div class="gap-item">
+                <div class="why" style="color:var(--ink)">
+                  <span class="t-dim">${td.t}</span>
+                  <span class="tag ${td.side==='buy'?'cyan':'rose'}">${td.side==='buy'?'买入建议':'卖出建议'}</span><br>
+                  <b>${td.act}</b> — ${td.why}<br>
+                  <span class="${/否决|止损|强平/.test(td.st)?'t-rose':/采纳|执行|持有/.test(td.st)?'t-cyan':'t-dim'}" style="font-weight:700">→ ${td.st}</span>
+                </div>
+              </div>`).join('')
+            : '<div class="t-xs t-dim" style="font-weight:700">还没开过口。</div>',
+            {color:'coral', sub:'建议 ≠ 成交：每条都要过原则闸 + 老板签字'})}
           ${win('历史报告', reports.length ? reports.map((rp,i)=>`
             <div class="gap-item" style="cursor:pointer" data-report="${id}|${i}">
               <div class="gt"><span class="tag ${rp.score>=85?'gold':rp.score>=75?'cyan':''}">${rp.score} 分</span>
@@ -510,6 +524,7 @@ function openResearcherPanel(id){
     }, 8000);
   });
   const gr = $('#gotoRoster'); if(gr) gr.onclick = ()=> openComponent('desk');
+  const se = $('#soulEdit'); if(se) se.onclick = ()=> openSoulEditor(id);
   $$('#panelBody [data-report]').forEach(el2=> el2.onclick = ()=>{
     const [rid, idx] = el2.dataset.report.split('|');
     const rp = DATA.reports[rid][+idx];
@@ -530,3 +545,102 @@ function openResearcherPanel(id){
     $('#mClose').onclick = closeModal;
   });
 }
+
+/* ==========================================================================
+   灵魂文件（SOUL.md 式可编辑）+ 模拟仓买卖建议时间轴
+   ========================================================================== */
+DATA.trades = {
+  serenity: [
+    {t:'07-29 09:31', side:'buy',  act:'买入 电子特气 A 2%', why:'窄口传导确认，二供未至', st:'老板已采纳'},
+    {t:'07-24 13:20', side:'buy',  act:'光刻胶 A 重仓提案 8%', why:'KrF 验证独占窗口', st:'风控否决 · 流动性闸'},
+    {t:'07-18 10:05', side:'sell', act:'减仓 靶材 C 至 3%', why:'被依赖度下降，窄口变宽', st:'老板已采纳'},
+    {t:'07-08 09:40', side:'buy',  act:'买入 大硅片 B 3%', why:'拉货顺序第一站', st:'持有中 +3.7%'}],
+  tech: [
+    {t:'07-28 14:55', side:'buy',  act:'加仓 液冷 C 1%', why:'渗透率二阶导为正', st:'老板已采纳'},
+    {t:'07-21 09:35', side:'sell', act:'清仓 消费电子 F', why:'边际变化衰竭', st:'已执行 -2.1%'},
+    {t:'07-11 10:12', side:'buy',  act:'买入 光模块 E 4%', why:'排产上修 + 量价齐升', st:'持有中 +8.6%'}],
+  quant: [
+    {t:'07-25 09:32', side:'buy',  act:'因子篮子调仓（12 只）', why:'涨价主题 IC 仍显著', st:'自动执行'},
+    {t:'07-12 09:30', side:'sell', act:'剔除拥挤度前 5% 持仓', why:'拥挤度闸触发', st:'自动执行'}],
+  growth: [
+    {t:'07-26 09:31', side:'buy',  act:'买入 高多层 PCB D 3%', why:'横截面加速度第一', st:'老板已采纳'},
+    {t:'07-19 14:50', side:'sell', act:'破位止损 材料 G', why:'斜率走平即离场', st:'已执行 -6.8%'},
+    {t:'07-05 09:36', side:'buy',  act:'追入 铜箔 H 2%', why:'涨价函密度飙升', st:'止损离场 -9.2%'}],
+  macro: [
+    {t:'07-15 10:00', side:'sell', act:'建议整体降仓 10%', why:'流动性边际收紧', st:'老板部分采纳(-5%)'}],
+  oldmoney: [
+    {t:'07-10 09:45', side:'buy',  act:'买入 高股息公用 J 4%', why:'自由现金流转正+分红率上调', st:'持有中 +1.9%'}],
+  consume: [
+    {t:'07-03 09:40', side:'buy',  act:'买入 白酒 K 2%', why:'渠道库存见底（误判）', st:'风控强平 -12%'}]
+};
+
+function soulText(r){
+  return `口头禅: ${r.motto}
+激进: ${r.aggr}
+独立: ${r.indep}
+长线: ${r.horizon}
+因子: ${r.factors.join(', ')}
+发言·激进: ${r.say.hi}
+发言·中性: ${r.say.mid}
+发言·保守: ${r.say.lo}
+信条: ${r.creed || '（可自由书写。这是他的 SOUL.md，改了就是另一个人。）'}`;
+}
+
+function parseSoul(txt, r){
+  txt.split('\n').forEach(line=>{
+    const m = line.match(/^(口头禅|激进|独立|长线|因子|发言·激进|发言·中性|发言·保守|信条)\s*[:：]\s*(.*)$/);
+    if(!m) return;
+    const [, k, v] = m;
+    if(k === '口头禅') r.motto = v;
+    else if(k === '激进') r.aggr = clamp(parseInt(v) || r.aggr, 1, 10);
+    else if(k === '独立') r.indep = clamp(parseInt(v) || r.indep, 1, 10);
+    else if(k === '长线') r.horizon = clamp(parseInt(v) || r.horizon, 1, 10);
+    else if(k === '因子') r.factors = v.split(/[,，]/).map(s=>s.trim()).filter(Boolean);
+    else if(k === '发言·激进') r.say.hi = v;
+    else if(k === '发言·中性') r.say.mid = v;
+    else if(k === '发言·保守') r.say.lo = v;
+    else if(k === '信条') r.creed = v;
+  });
+}
+
+function openSoulEditor(id){
+  const r = DATA.researchers.find(x=>x.id === id);
+  openModal(`
+    <div class="win-bar" style="background:var(--pink)"><span>SOUL.md · ${r.n}</span>
+      <span class="dots" id="mClose" style="cursor:pointer">_ □ ×</span></div>
+    <div style="padding:13px">
+      <div class="t-xs t-dim" style="font-weight:700;line-height:1.7;margin-bottom:8px">
+        这是他的灵魂文件。逐行 <b>键: 值</b>，改完保存立刻生效（存本机，刷新不丢）。<br>
+        投产阶段这就是每个 agent 的 system prompt 源文件。</div>
+      <textarea class="inp" id="soulTa" rows="12" style="resize:vertical;font-size:11px;line-height:1.8">${soulText(r)}</textarea>
+      <div class="row" style="margin-top:10px;gap:6px">
+        <button class="px-btn on dotted" id="soulSave" style="flex:1">保存灵魂</button>
+        <button class="px-btn ghost" id="soulReset">恢复出厂人格</button>
+      </div>
+    </div>`);
+  $('#mClose').onclick = closeModal;
+  $('#soulSave').onclick = ()=>{
+    parseSoul($('#soulTa').value, r);
+    localStorage.setItem('rf_soul_' + id, $('#soulTa').value);
+    closeModal();
+    if(PANEL_OPEN === 'r:' + id) openResearcherPanel(id);
+    else if(PANEL_OPEN === 'desk') drawDesk();
+    toast(r.n + ' 的灵魂已改写。他自己还不知道');
+  };
+  $('#soulReset').onclick = ()=>{
+    localStorage.removeItem('rf_soul_' + id);
+    const d = DEFAULT_PERSONA[id];
+    if(d){ r.aggr = d[0]; r.indep = d[1]; r.horizon = d[2]; }
+    closeModal();
+    if(PANEL_OPEN === 'r:' + id) openResearcherPanel(id);
+    toast('已恢复出厂人格（口头禅等文本字段保留当前值）');
+  };
+}
+
+/* 启动时应用本机已保存的灵魂 */
+(function applySavedSouls(){
+  DATA.researchers.forEach(r=>{
+    const saved = localStorage.getItem('rf_soul_' + r.id);
+    if(saved) parseSoul(saved, r);
+  });
+})();

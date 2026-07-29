@@ -446,7 +446,7 @@ function cityRoom(){
     const tx0 = Math.max(0, Math.floor(Math.min(...xs) / TILE)), tx1 = Math.min(GW - 1, Math.ceil(Math.max(...xs) / TILE));
     const ty0 = Math.max(0, Math.floor(Math.min(...ys) / TILE)), ty1 = Math.min(GH - 1, Math.ceil(Math.max(...ys) / TILE));
     for(let y = ty0; y <= ty1 - 1; y++)
-      for(let x = tx0; x <= tx1; x++)
+      for(let x = tx0 + 1; x <= tx1 - 1; x++)   /* 瘦身：留出楼间走廊 */
         room.solid[y][x] = true;
     if(b.label){
       room.furniture.push({id:b.id, tx:tx0, ty:ty0, tw:tx1 - tx0 + 1, th:ty1 - ty0 + 1,
