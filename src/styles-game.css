@@ -191,3 +191,8 @@ html { overscroll-behavior: none; }
 .interact-hint{font-size:12.5px;padding:4px 10px}
 .guide-body{font-size:13px}
 .panel-foot{font-size:11px}
+
+/* GitHub 开源角标 */
+.gt-gh { text-decoration: none; display: inline-block; background: var(--ink); color: var(--cream); }
+.gt-gh:hover { background: var(--coral); color: #fff; }
+@media (max-width: 760px) { .gt-gh { font-size: 9px; padding: 3px 6px; } }
