@@ -5,3 +5,6 @@ bridge/boss.key
 bridge/carried.jsonl
 bridge/inquiry_index.json
 kwdata/*.csv
+
+bridge/__pycache__/
+**/__pycache__/
