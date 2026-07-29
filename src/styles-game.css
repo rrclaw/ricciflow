@@ -111,3 +111,13 @@ body { background: #1c140e; }   /* 世界层底色：深木色，替代 V1 蓝�
 .scrim { z-index: 7900; }
 .modal { z-index: 8600; }
 .tipbox { z-index: 8500; }
+
+/* ---------- 主题切换 ---------- */
+.gt-theme { background: var(--cream); color: var(--ink); font-size: 10px; font-weight: 700;
+  padding: 3px 8px; box-shadow: inset 0 0 0 2px var(--ink); cursor: pointer; }
+.gt-theme:hover { background: var(--mustard); }
+body.theme-fresh .game-topbar { background: rgba(249, 236, 214, .92); color: var(--ink); }
+body.theme-fresh .gt-stat { color: #7d6a52; }
+body.theme-fresh .gt-stat b { color: var(--ink); }
+body.theme-fresh .gt-loc { color: #b8791b; }
+body.theme-fresh .hud { background: rgba(249, 236, 214, .92); }

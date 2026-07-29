@@ -424,3 +424,7 @@ button{cursor:pointer;background:none;border:none}
   .drawer{left:12px;width:auto}
 }
 
+
+/* 沉淀金旗（知识库 MAP 层） */
+.gold-flag{position:absolute;top:-7px;right:-3px;font-size:11px;color:var(--mustard);
+  -webkit-text-stroke:1px var(--ink);animation:blinkq 1.8s steps(2) infinite;z-index:5}

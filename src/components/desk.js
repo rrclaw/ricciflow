@@ -142,6 +142,29 @@ RENDER.desk = function(){
     }); drawDesk(); };
 };
 
+/* ---- V2: 考核 / 模拟仓 / PIP / 外出状态（全部编造值，DEMO 角标） ---- */
+DATA.reviews = {
+  serenity:{hit:72, contrib:64, disc:88, rank:2, status:'在岗'},
+  tech:    {hit:66, contrib:78, disc:70, rank:1, status:'在岗'},
+  macro:   {hit:55, contrib:40, disc:82, rank:5, status:'在岗'},
+  consume: {hit:38, contrib:22, disc:60, rank:8, pip:true, status:'在岗'},
+  growth:  {hit:60, contrib:70, disc:34, rank:4, status:'外出调研'},
+  oldmoney:{hit:70, contrib:35, disc:96, rank:3, status:'在岗'},
+  quant:   {hit:62, contrib:58, disc:90, rank:6, status:'在岗'},
+  risk:    {hit:0,  contrib:0,  disc:100, rank:7, status:'在岗'}
+};
+function rNavSeries(id){
+  let s = 0; for(const ch of id) s = (s * 31 + ch.charCodeAt(0)) & 0x7fffffff;
+  const drift = (DATA.reviews[id]?.rank <= 3 ? .003 : DATA.reviews[id]?.pip ? -.002 : .0008);
+  let v = 100; const out = [];
+  for(let i = 0; i < 30; i++){
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    v = v * (1 + drift + ((s / 0x7fffffff) - .5) * .028);
+    out.push(v);
+  }
+  return out;
+}
+
 /* 记住出厂性格，方便一键还原 */
 const DEFAULT_PERSONA = {};
 DATA.researchers.forEach(r=> DEFAULT_PERSONA[r.id] = [r.aggr, r.indep, r.horizon]);
@@ -149,7 +172,14 @@ DATA.researchers.forEach(r=> DEFAULT_PERSONA[r.id] = [r.aggr, r.indep, r.horizon
 function drawDesk(){
   const g = $('#deskGrid'); if(!g) return;
   g.innerHTML = '';
-  DATA.researchers.forEach(r=> g.insertAdjacentHTML('beforeend', researcherCard(r)));
+  DATA.researchers.filter(r=>!r.gone).forEach(r=> g.insertAdjacentHTML('beforeend', researcherCard(r)));
+  const gone = DATA.researchers.filter(r=>r.gone);
+  if(gone.length){
+    g.insertAdjacentHTML('beforeend', win('前员工档案',
+      gone.map(r=>`<div class="row" style="margin-bottom:6px;opacity:.6">${avatarHTML(r.sp,'s3')}
+        <div><b>${r.n}</b><div class="t-xs t-dim">${r.id==='quant'?'跳槽城堡量化':'考核淘汰'} · 竞业条款 6 个月</div></div></div>`).join(''),
+      {color:'ink', cls:'rcard'}));
+  }
   bindDesk();
 }
 
@@ -189,6 +219,7 @@ function researcherCard(r){
     <div class="cap" style="margin:8px 0 6px">对今日议题的发言</div>
     <div class="saybox" id="say-${r.id}">${sayOf(r)}</div>
     <div class="motto">「${r.motto}」</div>
+    ${reviewBlock(r)}
     <div class="inbox" id="inbox-${r.id}">
       <span class="cap">任务收件箱</span>
       ${(r.inbox && r.inbox.length)
@@ -196,6 +227,40 @@ function researcherCard(r){
         : `<div class="t-xs t-dim" style="margin-top:3px" id="inboxEmpty-${r.id}">空 · 可从知识库缺口派单过来</div>`}
     </div>`;
   return win(r.n, body, {color, cls:'rcard', sub:'LV.'+r.lv});
+}
+
+function reviewBlock(r){
+  const rv = DATA.reviews[r.id];
+  if(!rv) return '';
+  if(r.gone) return '<div class="bridge" style="margin-top:8px">已跳槽至城堡量化 · 归档「前员工」</div>';
+  const nav = rNavSeries(r.id);
+  const last = nav[nav.length-1].toFixed(1);
+  const spark = typeof sparkHTML === 'function' && !r.veto
+    ? sparkHTML(nav, 250, 34, rv.pip ? 'var(--coral)' : 'var(--teal)') : '';
+  return `
+  <div style="border-top:3px dashed var(--ink);margin-top:8px;padding-top:7px">
+    <div class="row">
+      <span class="cap">考核</span><span class="demo-mark">编造值</span>
+      <span class="tag ${rv.rank<=3?'gold':''}">#${rv.rank}</span>
+      ${rv.pip ? '<span class="tag rose">PIP 观察期</span>' : ''}
+      <span class="tag ${rv.status==='外出调研'?'cyan':''}">${rv.status}</span>
+      ${r.salaryUp ? '<span class="tag gold">已加薪</span>' : ''}
+      <span class="sp"></span>
+      ${r.veto ? '' : `<span class="t-xs" style="font-weight:700">模拟仓 ${last}</span>`}
+    </div>
+    ${r.veto ? '<div class="t-xs t-dim" style="font-weight:700;margin-top:4px">风控官不持仓：他的 KPI 是别人少亏的钱</div>' : `
+    <div style="margin:5px 0">${spark}</div>
+    <div class="stat3">
+      <div><div class="k">命中</div><div class="v">${rv.hit}</div></div>
+      <div><div class="k">贡献</div><div class="v">${rv.contrib}</div></div>
+      <div><div class="k">纪律</div><div class="v">${rv.disc}</div></div>
+    </div>`}
+    <div class="row" style="gap:4px">
+      ${rv.pip ? `<button class="px-btn sm danger" data-cull="${r.id}">模拟：季度考核</button>` : ''}
+      ${!r.veto && rv.status === '在岗' ? `<button class="px-btn sm ghost" data-fieldtrip="${r.id}">派出去调研</button>` : ''}
+    </div>
+    ${rv.pip ? '<div class="t-xs t-rose" style="font-weight:700;margin-top:4px">连续 2 季末位将触发淘汰评审</div>' : ''}
+  </div>`;
 }
 
 function sliderRow(r, key, lo, hi){
@@ -217,6 +282,49 @@ function bindDesk(){
     });
   });
   $$('.chip').forEach(c=> c.onclick = ()=> c.classList.toggle('on'));
+  $$('[data-cull]').forEach(b=> b.onclick = ()=> openCullModal(b.dataset.cull));
+  $$('[data-fieldtrip]').forEach(b=> b.onclick = ()=>{
+    const r = DATA.researchers.find(x=>x.id === b.dataset.fieldtrip);
+    DATA.reviews[r.id].status = '外出调研';
+    drawDesk();
+    toast(r.n + ' 已出门。情报会回流到老板日报');
+    setTimeout(()=>{
+      DATA.reviews[r.id].status = '在岗';
+      if(typeof pushDaily === 'function')
+        pushDaily('intel', `外出情报：${r.n} 带回「某上市公司产线满负荷，Q3 排产比较满」（★★ 需交叉）`);
+      if(PANEL_OPEN === 'desk') drawDesk();
+    }, 8000);
+  });
+}
+
+function openCullModal(id){
+  const r = DATA.researchers.find(x=>x.id === id);
+  openModal(`
+    <div class="win-bar" style="background:var(--coral)"><span>季度考核评审 · ${r.n}</span>
+      <span class="dots" id="mClose" style="cursor:pointer">_ □ ×</span></div>
+    <div style="padding:13px">
+      <div class="t-sm" style="line-height:1.8;margin-bottom:10px">
+        连续 2 季末位（#8/8）。命中 ${DATA.reviews[id].hit} · 贡献 ${DATA.reviews[id].contrib} · 纪律 ${DATA.reviews[id].disc}。<br>
+        <span class="t-dim t-xs" style="font-weight:700">机制说明：淘汰不是惩罚失误，是止损方法论 —— 连他的模拟仓都在持续跑输基准。</span></div>
+      <div class="row" style="gap:6px">
+        <button class="px-btn sm" data-verdict="keep">保留观察一季</button>
+        <button class="px-btn sm" data-verdict="down">降级 · 转数据支持岗</button>
+        <button class="px-btn sm danger" data-verdict="out">淘汰出名册</button>
+      </div>
+    </div>`);
+  $('#mClose').onclick = closeModal;
+  $$('#modalBox [data-verdict]').forEach(b=> b.onclick = ()=>{
+    const v = b.dataset.verdict;
+    if(v === 'out'){
+      r.gone = true;
+      if(typeof pushDaily === 'function') pushDaily('review', `${r.n} 已淘汰出名册（连续 2 季末位）。移入前员工档案`);
+      toast('已淘汰。名册见「前员工」');
+    } else if(v === 'down'){
+      DATA.reviews[id].status = '数据支持岗';
+      toast('已降级：不再出观点，只做数据支持');
+    } else toast('保留观察一季：下季度还末位就没得谈了');
+    closeModal(); drawDesk();
+  });
 }
 
 /* ---- 自定义研究员 ---- */

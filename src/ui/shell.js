@@ -132,3 +132,14 @@ document.addEventListener('keydown', e=>{
   /* 世界层启动（office.js 提供）；引擎未就绪时静默跳过（迁移期） */
   if(typeof startOffice === 'function') startOffice();
 })();
+
+/* ---------- 配色切换：经典（暖木） / 清新（奶油蓝格纸） ---------- */
+function syncThemeBtn(){
+  $('#themeToggle').textContent = WORLD_THEME === 'classic' ? '◧ 经典配色' : '◨ 清新配色';
+}
+$('#themeToggle').onclick = ()=>{
+  applyWorldTheme(WORLD_THEME === 'classic' ? 'fresh' : 'classic');
+  syncThemeBtn();
+  toast(WORLD_THEME === 'classic' ? '经典配色：暖木办公室' : '清新配色：昨天那个奶油蓝格纸味');
+};
+syncThemeBtn();

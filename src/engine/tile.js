@@ -141,8 +141,42 @@ function renderRoomBase(room, hour, frame){
     if(f.paint) f.paint(ctx, f.tx*TILE, f.ty*TILE, hour, frame);
   });
   const g = ctx.createRadialGradient(room.W/2, room.H/2, room.H*.25, room.W/2, room.H/2, room.H*.95);
-  g.addColorStop(0, 'rgba(255,205,130,.10)');
-  g.addColorStop(1, 'rgba(30,16,8,.38)');
+  g.addColorStop(0, W_PAL.glow || 'rgba(255,205,130,.10)');
+  g.addColorStop(1, W_PAL.vignette || 'rgba(30,16,8,.38)');
   ctx.fillStyle = g; ctx.fillRect(0, 0, room.W, room.H);
   return off;
 }
+
+/* ==========================================================================
+   主题：经典（暖木星露谷） / 清新（奶油蓝格纸，V1 airhouse 色系）
+   ========================================================================== */
+const W_THEMES = {
+  classic: {
+    woodA:'#8a5a35', woodB:'#7c4f2e', woodLine:'#5f3c22',
+    wall:'#c9a06a', wallLo:'#b08a54', wallLine:'#6e4a28',
+    rug:'#8f4a52', rugHi:'#a56069', rugLine:'#63343c',
+    shadow:'rgba(40,22,10,.25)', vignette:'rgba(30,16,8,.38)', glow:'rgba(255,205,130,.10)',
+    bodyBg:'#1c140e'
+  },
+  fresh: {
+    woodA:'#e3d2ac', woodB:'#d8c69e', woodLine:'#b3a077',
+    wall:'#dfe7f2', wallLo:'#c8d4e4', wallLine:'#8fa0b8',
+    rug:'#ef86ad', rugHi:'#f5a7c3', rugLine:'#c05a83',
+    shadow:'rgba(90,90,120,.18)', vignette:'rgba(120,140,170,.16)', glow:'rgba(255,255,255,.12)',
+    bodyBg:'#cfe1f5'
+  }
+};
+let WORLD_THEME = localStorage.getItem('rf_theme') || 'classic';
+
+function applyWorldTheme(name){
+  WORLD_THEME = W_THEMES[name] ? name : 'classic';
+  Object.assign(W_PAL, W_THEMES[WORLD_THEME]);
+  localStorage.setItem('rf_theme', WORLD_THEME);
+  document.body.style.background = W_PAL.bodyBg;
+  document.body.classList.toggle('theme-fresh', WORLD_THEME === 'fresh');
+  /* 世界层立即重渲 */
+  if(typeof WALK !== 'undefined' && WALK.room){
+    WALK.base = renderRoomBase(WALK.room, WALK.hour, WALK.plantFrame);
+  }
+}
+applyWorldTheme(WORLD_THEME);

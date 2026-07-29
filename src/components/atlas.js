@@ -113,6 +113,11 @@ Object.keys(ATLAS_RAW).forEach(dom=>{
 /* 被依赖数：缺口排序用 */
 function inDegree(id){ return DATA.atlas.filter(n=> n.edges.includes(id)).length; }
 
+/* 沉淀层种子：原始材料 vs 老板打标验证后的成果，两层硬隔离（需求 8） */
+[['光刻胶',2],['HBM',3],['先进封装 CoWoS',2],['电子特气',1],['液冷',1],['白酒渠道库存',1],['固态电池',1]]
+  .forEach(([n,v])=>{ const x = nodeByName(n); if(x) x.validated = v; });
+
+let ATLAS_LAYER = 'all';       /* all | raw | validated */
 let ATLAS_VIEW = 'map';        /* map | graph */
 let ATLAS_DIM  = 'industry';   /* industry | company | conf | fresh */
 let ATLAS_CO   = '中芯国际';
@@ -169,8 +174,12 @@ RENDER.atlas = function(){
         <button class="px-btn sm ${ATLAS_DIM==='fresh'?'on':''}" data-dim="fresh">按时效性</button>
         ${ATLAS_DIM==='company' ? `<span class="sp" style="max-width:20px"></span>
           ${Object.keys(COMPANY_MAP).map(c=>`<button class="px-btn sm ${ATLAS_CO===c?'on':''}" data-co="${c}">${c}</button>`).join('')}` : ''}
+        <span class="cap" style="margin-left:10px">图层</span>
+        <button class="px-btn sm ${ATLAS_LAYER==='all'?'on':''}" data-layer="all">全部</button>
+        <button class="px-btn sm ${ATLAS_LAYER==='raw'?'on':''}" data-layer="raw">只看原始</button>
+        <button class="px-btn sm ${ATLAS_LAYER==='validated'?'on':''}" data-layer="validated">只看沉淀 ⚑</button>
         <span class="sp"></span>
-        <span class="t-xs t-dim" style="font-weight:700">${DATA.atlas.length} 个节点 · ${DATA.atlas.filter(n=>n.docs===0).length} 个黑洞</span>
+        <span class="t-xs t-dim" style="font-weight:700">${DATA.atlas.length} 节点 · ${DATA.atlas.filter(n=>n.docs===0).length} 黑洞 · ⚑${DATA.atlas.reduce((a,n)=>a+(n.validated||0),0)} 条沉淀</span>
       </div>
       <div class="legend" id="atlasLegend"></div>`, {color:'ink'})}
 
@@ -191,6 +200,7 @@ RENDER.atlas = function(){
   $$('[data-view]').forEach(b=> b.onclick = ()=>{ ATLAS_VIEW = b.dataset.view; RENDER.atlas(); });
   $$('[data-dim]').forEach(b=> b.onclick = ()=>{ ATLAS_DIM = b.dataset.dim; RENDER.atlas(); });
   $$('[data-co]').forEach(b=> b.onclick = ()=>{ ATLAS_CO = b.dataset.co; RENDER.atlas(); });
+  $$('[data-layer]').forEach(b=> b.onclick = ()=>{ ATLAS_LAYER = b.dataset.layer; RENDER.atlas(); });
 
   drawLegend();
   drawGaps(gaps);
@@ -227,6 +237,8 @@ function drawMap(){
     const plots = el('div','plots');
     list.forEach(n=>{
       const p = el('div','plot ' + plotClass(n) + (n.fresh > 180 && n.docs > 0 ? ' stale' : ''));
+      if(ATLAS_LAYER === 'raw' && n.validated) p.style.opacity = .25;
+      if(ATLAS_LAYER === 'validated' && !n.validated) p.style.opacity = .18;
       /* 楼高 = 篇数，楼宽 = 置信度，窗户 = 像素点阵 */
       const h = n.docs === 0 ? 0 : clamp(5 + n.docs*2.2, 7, 27);
       const w = n.docs === 0 ? 0 : Math.round(clamp(9 + n.conf*10, 9, 19));
@@ -234,7 +246,8 @@ function drawMap(){
         ? '<span class="q">?</span>'
         : `<i class="bld" style="height:${h}px;width:${w}px;background:${nodeColor(n)};
              background-image:repeating-linear-gradient(0deg,transparent 0 3px,rgba(63,43,35,.34) 3px 5px),
-                              repeating-linear-gradient(90deg,transparent 0 3px,rgba(63,43,35,.34) 3px 5px)"></i>`;
+                              repeating-linear-gradient(90deg,transparent 0 3px,rgba(63,43,35,.34) 3px 5px)"></i>` +
+          (n.validated ? `<span class="gold-flag" title="沉淀 ${n.validated} 条">⚑</span>` : '');
       p.onmousemove = e=> showTip(atlasTip(n), e);
       p.onmouseleave = hideTip;
       p.onclick = ()=> openNodeDrawer(n);
@@ -268,8 +281,15 @@ function openNodeDrawer(n){
         ${n.docs===0?'<span class="tag rose">黑洞 · 0 篇</span>':`<span class="tag gold">${n.docs} 篇</span>`}
         ${n.fresh>180&&n.docs>0?'<span class="tag rose">已陈旧</span>':''}
       </div>
-      <div class="cap" style="margin-bottom:5px">材料来源</div>
+      <div class="cap" style="margin-bottom:5px">原始材料层</div>
       <div class="t-sm" style="margin-bottom:11px">${n.sources.length?n.sources.map(s=>`<span class="tag cyan" style="margin:0 3px 3px 0">${s}</span>`).join(''):'<span class="t-rose">无</span>'}</div>
+      <div style="background:${n.validated?'#fdf3d9':'var(--cream2)'};box-shadow:inset 0 0 0 2px var(--ink);padding:7px 8px;margin-bottom:11px">
+        <div class="cap" style="margin-bottom:4px">⚑ 沉淀成果层（老板打标）</div>
+        ${n.validated
+          ? `<div class="t-sm" style="font-weight:700">${n.validated} 条已验证结论</div>
+             <div class="t-xs t-dim" style="font-weight:700">检索加权 ×2 · 与原始层硬隔离，永不混淆</div>`
+          : '<div class="t-xs t-dim" style="font-weight:700">空 · 在研究对话框里「打标沉淀」后出现</div>'}
+      </div>
       <div class="cap" style="margin-bottom:5px">下游依赖它的节点（${dep.length}）</div>
       <div class="t-sm" style="margin-bottom:11px">${dep.length?dep.map(d=>`<span class="tag">${d.name}</span>`).join(' '):'<span class="t-dim">无</span>'}</div>
       <hr class="hr" style="margin:12px 0">
@@ -395,10 +415,16 @@ function drawGraph(){
     nodes.forEach(p=>{
       const s = p.n.docs === 0 ? 7 : clamp(7 + Math.sqrt(p.n.docs)*3, 8, 20);
       const x = Math.round(p.x - s/2), y = Math.round(p.y - s/2);
+      if(ATLAS_LAYER === 'validated' && !p.n.validated) return;
+      if(ATLAS_LAYER === 'raw' && p.n.validated){ ctx.globalAlpha = .25; }
+      if(p.n.validated){
+        ctx.fillStyle = '#e9b23c'; ctx.fillRect(x-4, y-4, s+8, s+8);
+      }
       ctx.fillStyle = '#3f2b23';
       ctx.fillRect(x-2, y-2, s+4, s+4);
       ctx.fillStyle = nodeColor(p.n);
       ctx.fillRect(x, y, s, s);
+      ctx.globalAlpha = 1;
       if(p.n.docs === 0){
         ctx.fillStyle = '#fff'; ctx.font = 'bold 9px monospace';
         ctx.fillText('?', x + s/2 - 3, y + s/2 + 3);
