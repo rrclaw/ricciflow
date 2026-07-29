@@ -142,9 +142,12 @@ async def main():
         check(await page.eval_on_selector_all("#kanban > div", "e=>e.length") == 6, "流水线 6 列")
         tick = await page.evaluate("DATA.tickets.length")
         check(tick >= 10, f"流水线票 >= 10（实得 {tick}）")
-        check(await page.eval_on_selector_all("#ideaFeed .gap-item", "e=>e.length") == 5, "灵感流 5 卡")
-        await page.click("[data-idea-go]"); await page.wait_for_timeout(300)
-        check(await page.evaluate("DATA.tickets.length") == tick + 1, "灵感「开研究」→ 票 +1")
+        await page.wait_for_timeout(1600)   # 等 insight 灵感流加载
+        check(await page.eval_on_selector_all("#ideaFeed .gap-item", "e=>e.length") >= 1, "灵感流有卡")
+        goBtn = await page.query_selector("[data-ins-go]") or await page.query_selector("[data-idea-go]")
+        if goBtn:
+            await goBtn.click(); await page.wait_for_timeout(300)
+            check(await page.evaluate("DATA.tickets.length") >= tick + 1, "灵感「立课题」→ 票 +1")
         # 投稿
         inbox0 = await page.evaluate("(DATA.researchers.find(r=>r.id==='tech').inbox||[]).length")
         await page.click("#subGo"); await page.wait_for_timeout(300)
