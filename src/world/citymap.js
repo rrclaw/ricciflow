@@ -533,53 +533,225 @@ const VENUE_DECOR = {
 
 function venueRoom(key){
   const V = VENUE_DECOR[key];
-  const seats = [[3,4],[7,4],[5,6],[9,6]];
+  /* 每家店自己的坐席位（气泡跟着人） */
+  const SEAT_LAYOUT = {
+    rest: [[3.4,3.2],[8.2,3.2],[3.4,5.8],[8.2,5.8]],      /* 圆桌四方 */
+    tea:  [[3.6,4.6],[8.0,4.6],[5.8,6.2],[5.8,2.9]],      /* 茶台对坐 */
+    ktv:  [[3.2,5.2],[4.9,5.2],[6.6,5.2],[8.3,5.2]]       /* 沙发一排 */
+  };
+  const seats = SEAT_LAYOUT[key];
   const who = key === 'tea' ? ['serenity','macro','guest','guest']
             : key === 'rest' ? ['tech','growth','guest','guest']
             : ['growth','tech','guest','guest'];
   const F = [];
   F.push({id:'join', tx:5, ty:2, tw:3, th:1, solid:false,
     label:'入席 · 正式开一局饭局', onUse:()=> startVenueDinner(key)});
+
+  /* ---------- 分店画法 ---------- */
+  const paintRest = (ctx, hour, frame)=>{
+    /* 红灯笼 */
+    [[2.2,0],[6.2,0],[10.2,0]].forEach(([lx])=>{
+      const x = lx*TILE, y = 30;
+      ctx.fillStyle = W_PAL.ink; ctx.fillRect(x + 14, y - 12, 3, 14);
+      ctx.fillStyle = '#d63b2f'; ctx.fillRect(x + 4, y, 24, 20);
+      ctx.strokeStyle = W_PAL.ink; ctx.lineWidth = 2; ctx.strokeRect(x + 4, y, 24, 20);
+      ctx.fillStyle = '#e9c56a'; ctx.fillRect(x + 12, y + 20, 8, 5);
+      ctx.fillStyle = '#f0a04a'; ctx.fillRect(x + 8, y + 8, 16, 3);
+    });
+    /* 菜单水牌 */
+    ctx.fillStyle = W_PAL.ink; ctx.fillRect(10.6*TILE, 2.4*TILE, 60, 74);
+    ctx.fillStyle = '#f3ecd8'; ctx.fillRect(10.6*TILE + 4, 2.4*TILE + 4, 52, 66);
+    ctx.fillStyle = W_PAL.ink; ctx.font = 'bold 10px monospace';
+    ctx.fillText('今日菜单', 10.6*TILE + 8, 2.4*TILE + 18);
+    ctx.font = '9px monospace';
+    ['佛跳墙','醉蟹','排产表(隐藏菜)'].forEach((m,i)=>
+      ctx.fillText(m, 10.6*TILE + 7, 2.4*TILE + 34 + i*15));
+    /* 大圆桌 + 转盘 + 菜 */
+    const cx = 5.9*TILE, cy = 4.6*TILE;
+    ctx.fillStyle = 'rgba(40,22,10,.25)'; ctx.beginPath();
+    ctx.ellipse(cx, cy + 34, 76, 22, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = W_PAL.ink; ctx.beginPath();
+    ctx.ellipse(cx, cy + 10, 80, 44, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#c4453a'; ctx.beginPath();                 /* 红桌布 */
+    ctx.ellipse(cx, cy + 8, 76, 40, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#a8352c'; ctx.beginPath();
+    ctx.ellipse(cx, cy + 8, 76, 40, 0, 0, Math.PI*2); ctx.stroke();
+    ctx.fillStyle = '#e8dcc8'; ctx.beginPath();                 /* 转盘 */
+    ctx.ellipse(cx, cy + 4, 44, 22, 0, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = W_PAL.ink; ctx.stroke();
+    /* 菜品（转盘随帧转 45°） */
+    const dishes = [['#f0a04a',18,0],['#6cab52',0,10],['#f3ecd8',-18,0],['#d16a8e',0,-9]];
+    dishes.forEach(([c, dx, dy], i)=>{
+      const rot = frame ? 1 : 0;
+      const [ddx, ddy] = rot ? [dishes[(i+1)%4][1], dishes[(i+1)%4][2]] : [dx, dy];
+      ctx.fillStyle = c; ctx.beginPath();
+      ctx.ellipse(cx + ddx, cy + 4 + ddy, 9, 5, 0, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = W_PAL.ink; ctx.stroke();
+    });
+    /* 酒壶 + 杯 */
+    ctx.fillStyle = '#e9c56a'; ctx.fillRect(cx - 4, cy - 26, 9, 12);
+    ctx.strokeStyle = W_PAL.ink; ctx.strokeRect(cx - 4, cy - 26, 9, 12);
+    [[-58, 18],[52, 18],[-58, 2],[52, 2]].forEach(([dx, dy])=>{
+      ctx.fillStyle = '#fff'; ctx.fillRect(cx + dx, cy + dy, 7, 6);
+      ctx.strokeRect(cx + dx, cy + dy, 7, 6);
+    });
+  };
+
+  const paintTea = (ctx, hour, frame)=>{
+    /* 山水挂轴 */
+    ctx.fillStyle = W_PAL.ink; ctx.fillRect(2.0*TILE, 8, 54, 86);
+    ctx.fillStyle = '#f3ecd8'; ctx.fillRect(2.0*TILE + 4, 12, 46, 78);
+    ctx.fillStyle = '#7a94a8';
+    ctx.beginPath(); ctx.moveTo(2.0*TILE + 6, 70); ctx.lineTo(2.0*TILE + 22, 34);
+    ctx.lineTo(2.0*TILE + 34, 58); ctx.lineTo(2.0*TILE + 48, 28);
+    ctx.lineTo(2.0*TILE + 48, 88); ctx.lineTo(2.0*TILE + 6, 88); ctx.fill();
+    ctx.fillStyle = '#4f8a72'; ctx.font = 'bold 9px monospace';
+    ctx.fillText('静', 2.0*TILE + 38, 24);
+    /* 矮茶台（原木长案） */
+    const tx = 4.0*TILE, ty = 4.2*TILE, tw = 4.4*TILE, th = 1.5*TILE;
+    ctx.fillStyle = 'rgba(40,22,10,.25)'; ctx.fillRect(tx + 4, ty + th + 4, tw, 8);
+    ctx.fillStyle = W_PAL.ink; ctx.fillRect(tx - 3, ty - 3, tw + 6, th + 6);
+    texRect(ctx, tx, ty, tw, th, '#8a6a45', .12, 7);
+    /* 茶盘 */
+    ctx.fillStyle = W_PAL.ink; ctx.fillRect(tx + 22, ty + 10, 96, 30);
+    ctx.fillStyle = '#5f4530'; ctx.fillRect(tx + 25, ty + 13, 90, 24);
+    /* 紫砂壶 */
+    ctx.fillStyle = '#8a4a3a'; ctx.beginPath();
+    ctx.ellipse(tx + 44, ty + 24, 11, 8, 0, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = W_PAL.ink; ctx.stroke();
+    ctx.fillRect(tx + 54, ty + 20, 8, 3);                       /* 壶嘴 */
+    ctx.fillRect(tx + 40, ty + 12, 8, 3);                       /* 壶盖钮 */
+    /* 三只茶杯 */
+    [[70, 18],[86, 26],[100, 16]].forEach(([dx, dy])=>{
+      ctx.fillStyle = '#e8dcc8'; ctx.fillRect(tx + dx, ty + dy, 9, 7);
+      ctx.strokeRect(tx + dx, ty + dy, 9, 7);
+      ctx.fillStyle = '#8a6a3a'; ctx.fillRect(tx + dx + 2, ty + dy + 2, 5, 2);
+    });
+    /* 蒸汽（两帧摆动） */
+    ctx.fillStyle = 'rgba(255,255,255,.55)';
+    const sway = frame ? 3 : -3;
+    [[44, -6],[86, 2]].forEach(([dx, dy])=>{
+      ctx.fillRect(tx + dx + sway, ty + dy, 3, 6);
+      ctx.fillRect(tx + dx - sway, ty + dy - 9, 3, 6);
+      ctx.fillRect(tx + dx + sway, ty + dy - 18, 3, 5);
+    });
+    /* 蒲团 ×4 */
+    seats.forEach(([sx, sy])=>{
+      ctx.fillStyle = '#7a8a5e'; ctx.beginPath();
+      ctx.ellipse(sx*TILE + 24, sy*TILE + 46, 20, 9, 0, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = W_PAL.ink; ctx.stroke();
+    });
+  };
+
+  const paintKtv = (ctx, hour, frame)=>{
+    /* 压暗底色氛围 */
+    ctx.fillStyle = 'rgba(30,16,44,.45)';
+    ctx.fillRect(0, 2*TILE, 13*TILE, 7*TILE);
+    /* 大电视 + 歌词 */
+    ctx.fillStyle = W_PAL.ink; ctx.fillRect(3.4*TILE, 4, 6.4*TILE, 2.1*TILE);
+    ctx.fillStyle = '#101020'; ctx.fillRect(3.4*TILE + 6, 10, 6.4*TILE - 12, 2.1*TILE - 12);
+    /* MV 色块 */
+    ctx.fillStyle = frame ? '#d16a8e' : '#57bfb4';
+    ctx.fillRect(3.4*TILE + 14, 18, 60, 34);
+    ctx.fillStyle = frame ? '#57bfb4' : '#e9b23c';
+    ctx.fillRect(3.4*TILE + 84, 24, 44, 28);
+    /* 歌词滚动条 */
+    ctx.fillStyle = frame ? '#e9c56a' : '#fff';
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText('♪ 朋友一生一起走～ 那些日子不再有～', 3.4*TILE + 12, 2.1*TILE - 10);
+    /* 音箱 ×2 */
+    [[2.4*TILE, 10],[10.2*TILE, 10]].forEach(([bx, by])=>{
+      ctx.fillStyle = W_PAL.ink; ctx.fillRect(bx, by, 26, 60);
+      ctx.fillStyle = '#2a2a34'; ctx.fillRect(bx + 3, by + 3, 20, 54);
+      ctx.fillStyle = frame ? '#7b4a9c' : '#4a2a6c';
+      ctx.beginPath(); ctx.arc(bx + 13, by + 20, 7, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(bx + 13, by + 42, 9, 0, Math.PI*2); ctx.fill();
+    });
+    /* L 型大沙发 */
+    const sy = 4.6*TILE;
+    ctx.fillStyle = W_PAL.ink; ctx.fillRect(2.6*TILE - 4, sy - 4, 7.4*TILE + 8, 1.9*TILE + 8);
+    ctx.fillStyle = '#4a3560'; ctx.fillRect(2.6*TILE, sy, 7.4*TILE, 1.9*TILE);
+    ctx.fillStyle = '#5c4374';                                   /* 坐垫分块 */
+    for(let i = 0; i < 4; i++)
+      ctx.fillRect(2.6*TILE + 8 + i*56, sy + 26, 48, 30);
+    ctx.fillStyle = '#4a3560'; ctx.fillRect(2.6*TILE, sy + 1.9*TILE, 1.2*TILE, 24);  /* L 拐角 */
+    /* 茶几：酒 + 果盘 + 麦克风 */
+    const gx = 4.6*TILE, gy = 7.2*TILE;
+    ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(gx + 4, gy + 40, 3.4*TILE, 7);
+    ctx.fillStyle = W_PAL.ink; ctx.fillRect(gx - 3, gy - 3, 3.4*TILE + 6, 42);
+    ctx.fillStyle = '#1e1626'; ctx.fillRect(gx, gy, 3.4*TILE, 36);
+    ctx.fillStyle = '#2f8f4a'; ctx.fillRect(gx + 12, gy - 18, 8, 20);      /* 绿瓶 */
+    ctx.fillStyle = '#c98a2a'; ctx.fillRect(gx + 26, gy - 14, 8, 16);      /* 洋酒 */
+    ctx.strokeStyle = W_PAL.ink; ctx.strokeRect(gx + 12, gy - 18, 8, 20);
+    ctx.strokeRect(gx + 26, gy - 14, 8, 16);
+    [[46, -6],[58, -6],[70, -6]].forEach(([dx, dy])=>{                     /* 杯 */
+      ctx.fillStyle = '#e8dcc8'; ctx.fillRect(gx + dx, gy + dy, 7, 8);
+      ctx.strokeRect(gx + dx, gy + dy, 7, 8);
+    });
+    ctx.fillStyle = '#d16a8e'; ctx.beginPath();                            /* 果盘 */
+    ctx.ellipse(gx + 94, gy + 2, 14, 6, 0, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = W_PAL.ink; ctx.stroke();
+    /* 麦克风 */
+    ctx.fillStyle = '#c9c9d4'; ctx.fillRect(gx + 82, gy - 10, 4, 12);
+    ctx.fillStyle = W_PAL.ink; ctx.beginPath(); ctx.arc(gx + 84, gy - 13, 5, 0, Math.PI*2); ctx.fill();
+  };
+
   const room = makeRoom({
     gw:13, gh:9, wallRows:2, furniture:F,
-    paintBase:(ctx, hour)=>{
+    paintBase:(ctx, hour, frame)=>{
+      /* KTV 地板换深色 */
+      if(key === 'ktv'){
+        for(let ty2 = 2; ty2 < 9; ty2++)
+          for(let tx2 = 0; tx2 < 13; tx2++)
+            texRect(ctx, tx2*TILE, ty2*TILE, TILE, TILE, '#3a2e4a', .12, tx2*7 + ty2*13);
+      }
       /* 店招 */
       ctx.fillStyle = W_PAL.ink; ctx.fillRect(3*TILE, 6, 7*TILE, 26);
       ctx.fillStyle = V.accent; ctx.fillRect(3*TILE + 3, 9, 7*TILE - 6, 20);
       ctx.fillStyle = '#fff'; ctx.font = 'bold 13px monospace';
-      ctx.textAlign = 'center'; ctx.fillText(V.n, 6.5*TILE, 23); ctx.textAlign = 'left';
-      paintWindow(ctx, 10.6*TILE, TILE - 8, 2*TILE, TILE + 12, hour);
-      /* 桌椅 + 坐着的人 */
-      seats.forEach(([tx, ty], i)=>{
-        const x = tx*TILE, y = ty*TILE;
-        ctx.fillStyle = W_PAL.ink; ctx.fillRect(x - 4, y + 16, 56, 22);
-        ctx.fillStyle = key === 'ktv' ? '#5c4a72' : '#9a6a3f';
-        ctx.fillRect(x - 1, y + 19, 50, 16);
-        ctx.fillStyle = V.accent; ctx.fillRect(x + 16, y + 22, 16, 8);   /* 桌上小物 */
-        drawSpriteOn(ctx, who[i], x + 6, y - 10, 2);
+      ctx.textAlign = 'center'; ctx.fillText(V.n, 6.5*TILE, 24); ctx.textAlign = 'left';
+      if(key !== 'ktv') paintWindow(ctx, 10.9*TILE, TILE + 2, 1.8*TILE, TILE + 6, hour);
+      /* 场景陈设 */
+      if(key === 'rest') paintRest(ctx, hour, frame);
+      else if(key === 'tea') paintTea(ctx, hour, frame);
+      else paintKtv(ctx, hour, frame);
+      /* 人（坐席） */
+      seats.forEach(([sx, sy], i)=>{
+        drawSpriteOn(ctx, who[i], sx*TILE + 12, sy*TILE, 2);
       });
-      paintPlant(ctx, TILE - 8, 6*TILE, 0);
+      if(key !== 'ktv') paintPlant(ctx, TILE - 8, 6.4*TILE, frame);
       /* 出口垫 */
       ctx.fillStyle = W_PAL.mustard; ctx.fillRect(5.6*TILE, 8*TILE + 16, 60, 8);
-      ctx.fillStyle = W_PAL.ink; ctx.font = 'bold 13px monospace';
-      ctx.fillText('EXIT → 街上', 5.7*TILE, 8*TILE + 12);
+      ctx.fillStyle = key === 'ktv' ? '#fff' : W_PAL.ink;
+      ctx.font = 'bold 10px monospace';
+      ctx.fillText('EXIT → 街上', 5.5*TILE, 8*TILE + 12);
     },
     paintDynamic:(ctx, now)=>{
-      /* 八卦气泡轮播：谁在说话，泡在谁头上 */
+      /* KTV 迪斯科光斑 */
+      if(key === 'ktv'){
+        const t = Math.floor(now / 400);
+        for(let i = 0; i < 5; i++){
+          const c = ['#e9b23c','#57bfb4','#d16a8e','#7fa8dd','#e8535a'][(t + i) % 5];
+          ctx.fillStyle = c + '55';
+          const x = ((t * 53 + i * 197) % (11 * TILE)) + TILE;
+          const y = 2.4*TILE + ((t * 31 + i * 83) % (5 * TILE));
+          ctx.fillRect(x, y, 14, 14);
+        }
+      }
+      /* 八卦气泡轮播 */
       const idx = Math.floor(now / 3000) % V.chat.length;
       const [speaker, line] = V.chat[idx];
       const si = who.indexOf(speaker) >= 0 ? who.indexOf(speaker) : idx % seats.length;
-      const [tx, ty] = seats[si];
-      const bx = tx*TILE + 20, by = ty*TILE - 26;
-      const w = Math.min(300, line.length * 11 + 16);
-      ctx.fillStyle = W_PAL.ink; ctx.fillRect(bx - 2, by - 2, w + 4, 22);
-      ctx.fillStyle = '#fff8e8'; ctx.fillRect(bx, by, w, 18);
-      ctx.fillStyle = W_PAL.ink; ctx.font = 'bold 13px monospace';
-      ctx.fillText(line, bx + 6, by + 13, w - 10);
-      /* 小尾巴 */
-      ctx.fillStyle = '#fff8e8'; ctx.fillRect(bx + 12, by + 18, 6, 6);
+      const [tx2, ty2] = seats[si];
+      const bx = clamp(tx2*TILE - 30, 6, 13*TILE - 320), by = ty2*TILE - 30;
+      const w = Math.min(310, line.length * 12 + 18);
+      ctx.fillStyle = W_PAL.ink; ctx.fillRect(bx - 2, by - 2, w + 4, 24);
+      ctx.fillStyle = '#fff8e8'; ctx.fillRect(bx, by, w, 20);
+      ctx.fillStyle = W_PAL.ink; ctx.font = 'bold 11px monospace';
+      ctx.fillText(line, bx + 7, by + 14, w - 12);
+      ctx.fillStyle = '#fff8e8'; ctx.fillRect(bx + 26, by + 20, 6, 6);
     },
-    onStep:(tx, ty)=>{ if(ty >= 8) enterCity(); }
+    onStep:(tx2, ty2)=>{ if(ty2 >= 8) enterCity(); }
   });
   return room;
 }
