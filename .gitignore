@@ -3,3 +3,4 @@ node_modules/
 # kb-bridge 机密：钥匙与真实搬运登记，永不入库
 bridge/boss.key
 bridge/carried.jsonl
+bridge/inquiry_index.json

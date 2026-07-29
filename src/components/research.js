@@ -115,7 +115,9 @@ RENDER.research = function(){
       <div>${win('流水线', '<div id="kanban"></div>', {color:'teal', sub:'点票卡进工作台 · 金框 = 完整样例'})}</div>
       <div class="col" id="dailyRail"></div>
     </div>`;
-  drawIdeas(); drawKanban(); drawDailyRail();
+  if(typeof renderInsightFeed === 'function') renderInsightFeed($('#ideaFeed'));
+  else drawIdeas();
+  drawKanban(); drawDailyRail();
   bindSubmit();
 };
 
@@ -262,7 +264,7 @@ function benchDeepHTML(){
         剧本模式 · 在「系统」里配 API key 可切实时模式</div>`,
       {color:'mustard', sub:'AI 帮你快速过一遍，深挖靠多轮追问'})}
     <div class="col">
-      ${win('追问建议', DATA.askChains.map(c=>`
+      ${win('追问建议', `<button class="px-btn on dotted" id="openInqBtn" style="width:100%;margin-bottom:8px">🔍 提问台 · 从真实纪要蒸馏专业追问</button>` + DATA.askChains.map(c=>`
         <div class="cap" style="margin:4px 0 4px">${c.layer}</div>
         ${c.qs.map(q=>`<button class="px-btn sm" style="width:100%;text-align:left;margin-bottom:4px;white-space:normal" data-ask="${q}">▸ ${q}</button>`).join('')}`).join('') +
         `<div class="t-xs t-dim" style="margin-top:6px;font-weight:700">提问链模板 · 投产后从 AceCamp 纪要采集真实问题库</div>`,
@@ -288,6 +290,8 @@ function bindBenchDeep(){
   $('#chatInput').onkeydown = e=>{ if(e.key === 'Enter') $('#chatSend').click(); };
   $$('[data-ask]').forEach(b=> b.onclick = ()=>{
     $('#chatInput').value = b.dataset.ask; playChatRound(b.dataset.ask); });
+  const oib = $('#openInqBtn');
+  if(oib) oib.onclick = ()=>{ const t = tk(RESEARCH_VIEW.slice(7)); openInquiry(t ? t.title : '存储涨价外溢设备与材料'); };
   $$('[data-lack]').forEach(b=> b.onclick = ()=>{
     b.classList.add('on'); b.textContent = '✓ 已约 · 待回流';
     pushDaily('gap', `深研票缺料：已约 ${b.dataset.lack}（光刻胶验证进度）`);

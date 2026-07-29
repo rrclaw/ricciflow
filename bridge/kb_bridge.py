@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.11
 """ricciflow kb-bridge — 本地知识库只读桥（老板钥匙鉴权）
 
 只绑 127.0.0.1:8331。只读 ~/knowledge，唯一写入是本目录的 carried.jsonl（搬运登记）。
@@ -23,6 +23,12 @@ HERE = Path(__file__).parent
 KEY_FILE = HERE / "boss.key"
 CARRY_FILE = HERE / "carried.jsonl"
 PORT = 8331
+
+try:
+    import distill
+except Exception as _e:
+    distill = None
+    print("[warn] distill 模块未就绪:", _e)
 
 def _gen_key():
     return "".join(random.SystemRandom().choice("0123456789") for _ in range(10))
@@ -168,9 +174,29 @@ class H(http.server.BaseHTTPRequestHandler):
         self._norm()
         u = urlparse(self.path); q = parse_qs(u.query)
         if u.path == "/api/health":
-            return self._send(200, {"ok": True, "docs": len(DOCS), "auth": self._auth()})
+            return self._send(200, {"ok": True, "docs": len(DOCS), "auth": self._auth(),
+                                    "distill": distill is not None})
+        if u.path == "/api/insight":
+            # 灵感流：公司门面，客人也能看（真实 search_alpha 新兴主题）
+            if not distill: return self._send(200, {"ok": False, "error": "distill 未就绪"})
+            try:
+                n = int((q.get("n") or ["3"])[0])
+                return self._send(200, distill.insight_daily(n))
+            except Exception as e:
+                return self._send(200, {"ok": False, "error": str(e)})
         if not self._auth():
             return self._send(401, {"error": "老板钥匙不对。保安请你去前台喝茶"})
+        if u.path == "/api/inquiry":
+            # 提问蒸馏：读内部纪要，需老板钥匙
+            theme = (q.get("theme") or [""])[0]
+            if not theme: return self._send(400, {"error": "缺 theme"})
+            if not distill: return self._send(200, {"ok": False, "error": "distill 未就绪"})
+            try:
+                r = distill.inquiry_for(theme)
+                r["ok"] = True
+                return self._send(200, r)
+            except Exception as e:
+                return self._send(200, {"ok": False, "error": str(e)})
         if u.path == "/api/buildings":
             inv = {}
             for d in DOCS.values():

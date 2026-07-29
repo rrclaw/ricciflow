@@ -325,6 +325,24 @@ async def main():
         await page.click("#mClose")
         await page.evaluate("localStorage.removeItem('rf_boss_key')")
 
+        # ---------- INSIGHT 灵感流 / INQUIRY 提问台 ----------
+        await page.click('[data-hud="research"]'); await page.wait_for_timeout(2000)
+        ideas = await page.eval_on_selector_all("#ideaFeed .gap-item", "e=>e.length")
+        check(ideas >= 1, "灵感流有卡（实时或回落）")
+        live_insight = await page.locator("text=🟢 实时").count()
+        print(("  ok   灵感流 = search_alpha 实时" if live_insight else "  ok   灵感流回落（桥未跑，非硬失败）"))
+        # 提问台：设钥匙后点「怎么问」
+        real_key = (ROOT / "bridge" / "boss.key")
+        if real_key.exists():
+            vkey = real_key.read_text().strip()
+            await page.evaluate(f"VAULT.key='{vkey}'; localStorage.setItem('rf_boss_key','{vkey}')")
+            btn = await page.query_selector("[data-ins-ask]")
+            if btn:
+                await btn.click(); await page.wait_for_timeout(2000)
+                iq = await page.locator("#inqBody .gap-item").count()
+                check(iq >= 6, f"提问台蒸馏出真实问题（{iq} 条）")
+                await page.evaluate("closeModal()")
+
         # ---------- PWA / 收尾 ----------
         mf = await page.evaluate("fetch('manifest.webmanifest').then(r=>r.status)")
         check(mf == 200, "PWA manifest 可达")
