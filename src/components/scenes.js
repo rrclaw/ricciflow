@@ -19,7 +19,11 @@ DATA.scenes = [
   {id:'dinner', n:'同行饭局', ico:'局', color:'pink', run:true,
    cast:['tech','growth','consume'], guests:2,
    dur:'~3 min', out:'碎信息 → 待验证线索',
-   flow:['入席','碎信息','可信度过滤','进线索池']},
+   flow:['选场地','碎信息','可信度过滤','进线索池']},
+  {id:'trip', n:'出差调研', ico:'研', color:'mustard', run:true,
+   cast:['tech','serenity'], guests:3,
+   dur:'~3 min', out:'一手 evidence 入库（金旗）',
+   flow:['券商楼集合','大巴','董秘 Q&A','纪要沉淀']},
   {id:'weekly', n:'周会', ico:'周', color:'teal', run:false,
    cast:['tech','macro','quant'], dur:'~20 min', out:'周度配置矩阵',
    flow:['回顾上周假设','三人各出一版权重','冲突项投票','冻结本周快照']},
@@ -33,9 +37,6 @@ DATA.scenes = [
   {id:'strategy', n:'策略会', ico:'策', color:'teal', run:false,
    cast:['macro','quant','oldmoney'], dur:'~30 min', out:'季度大势判断',
    flow:['宏观定调','情景分档','各情景配置','下车信号']},
-  {id:'field', n:'产业一线调研', ico:'研', color:'mustard', run:false,
-   cast:['tech','consume'], dur:'~1 day', out:'一手 evidence 入库',
-   flow:['定访谈提纲','约访','纪要结构化','抽标量事实','写进 wiki']}
 ];
 
 /* 晨会：每个人的观点便签 */
@@ -194,6 +195,7 @@ function openScene(s){
 
   if(s.id === 'morning') runMorning();
   else if(s.id === 'anti') runAnti();
+  else if(s.id === 'trip') runTrip();
   else runDinner();
 }
 
@@ -519,19 +521,44 @@ async function runAnti(){
   SCENE.running = false;
 }
 
-/* ---------- 场景 C：同行饭局 ---------- */
+/* ---------- 场景 C：同行饭局（三场地：场地影响信息质感） ---------- */
+const DINNER_VENUES = {
+  rest:{n:'聚贤楼（饭店）',   note:'酒过三巡，醉话率中', mod:g=> g},
+  tea: {n:'拾露茶室',        note:'清醒场，信息干净但上限低', mod:g=> ({...g, cred:Math.min(g.cred, 3)})},
+  ktv: {n:'夜莺会所（商K）',  note:'醉话率最高，但偶出猛料', mod:(g,i)=> i===0 ? {...g, cred:3, txt:g.txt+'（酒后指名道姓版）'} : {...g, cred:Math.max(1, g.cred-1)}}
+};
+let DINNER_VENUE = null;
+
 async function runDinner(){
+  const stage0 = $('#stage');
+  if(!DINNER_VENUE){
+    setStep(0);
+    stage0.insertAdjacentHTML('beforeend', `
+      <div class="table-top" style="width:340px;height:190px"><div>
+        <div class="cap">今晚去哪喝？</div>
+        <div class="col" style="gap:6px;margin-top:8px">
+          ${Object.entries(DINNER_VENUES).map(([k,v])=>
+            `<button class="px-btn sm" data-venue="${k}" style="width:100%">${v.n} · <span class="t-dim">${v.note}</span></button>`).join('')}
+        </div></div></div>`);
+    $$('[data-venue]').forEach(b=> b.onclick = ()=>{
+      DINNER_VENUE = b.dataset.venue;
+      const sc = DATA.scenes.find(x=>x.id==='dinner');
+      openScene(sc);
+    });
+    return;
+  }
   SCENE.running = true;
   resetSeed();
   const stage = $('#stage');
   stage.style.minHeight = '520px';
   const scene = DATA.scenes.find(s=>s.id==='dinner');
   const cast = scene.cast.map(id=> DATA.researchers.find(r=>r.id===id));
+  const venue = DINNER_VENUES[DINNER_VENUE];
 
   setStep(0);
   stage.insertAdjacentHTML('beforeend',
     `<div class="table-top round" id="tableTop"><div>
-      <div class="cap">圆桌</div>
+      <div class="cap">${venue.n}</div>
       <b style="font-size:11px;display:block;margin-top:4px">同行饭局</b>
       <div class="t-xs t-dim" style="margin-top:6px;line-height:1.5;font-weight:700">
         默认所有信息不可信<br>只有能交叉复核的才留下
@@ -549,8 +576,9 @@ async function runDinner(){
   setStep(1);
   await wait(300);
   let trash = 0, keep = [];
-  for(let i=0;i<DINNER_GOSSIP.length;i++){
-    const g = DINNER_GOSSIP[i];
+  const gossips = DINNER_GOSSIP.map((g,i)=> venue.mod(g, i));
+  for(let i=0;i<gossips.length;i++){
+    const g = gossips[i];
     const seatId = g.who === 'guest' ? (i%2 ? 'g2':'g1') : g.who;
     const seat = SCENE.seats[seatId];
     const bx = seat ? parseFloat(seat.style.left) : cx;
@@ -565,8 +593,8 @@ async function runDinner(){
   setStep(2);
   await wait(300);
   log('<b>可信度过滤</b> — 只有 ★★★ 能进线索池，其余全进噪声桶', 'hi');
-  for(let i=0;i<DINNER_GOSSIP.length;i++){
-    const g = DINNER_GOSSIP[i];
+  for(let i=0;i<gossips.length;i++){
+    const g = gossips[i];
     const node = $('#gs-' + i);
     if(g.cred >= 3){ node.classList.add('keep'); keep.push(g); log(`保留：${g.note}`); }
     else { node.classList.add('trash'); trash++; $('#bin').textContent = '噪声桶 · ' + trash; log(`丢弃：${g.note}`, 'warn'); }
@@ -582,10 +610,141 @@ async function runDinner(){
         <span class="t-dim">留下的理由：${k.note}</span></div>`).join('')}
       <div class="sec"><span class="k">丢弃</span> ${trash} 条（孤证 / 转述的转述 / 情绪化措辞）</div>
     </div>
-    <div class="bridge">饭局信息<b>默认不可信</b>。它的价值是给你指方向，不是给你下结论。
+    <div class="bridge">饭局信息<b>默认不可信</b>（场地：${venue.n}）。它的价值是给你指方向，不是给你下结论。
     进池 ≠ 入库：还要跑一次交叉复核才允许写进知识库。</div>`, {color:'pink'});
+  DINNER_VENUE = null;
   log('<b>' + keep.length + '</b> 条进待验证线索池，<b>' + trash + '</b> 条丢弃', 'hi');
   SCENES_TODAY++; $('#tbScene').textContent = SCENES_TODAY;
   SCENE.running = false;
 }
 
+
+/* ---------- 场景 D：出差调研（券商带队见董秘） ---------- */
+async function runTrip(){
+  SCENE.running = true;
+  const stage = $('#stage');
+  stage.style.minHeight = '520px';
+  const W = stage.clientWidth;
+
+  /* 阶段 1：券商楼集合 */
+  setStep(0);
+  log('<b>集合</b> 中银河证券销售带队。同行还有 2 家机构的研究员——<b>他们也在记</b>');
+  stage.insertAdjacentHTML('beforeend', `
+    <div class="table-top" style="width:300px;height:110px;top:24%" id="tableTop"><div>
+      <div class="cap">中银河证券 · 门口集合</div>
+      <b style="font-size:11px">目的地：X 公司产业园</b>
+      <div class="t-xs t-dim" style="font-weight:700;margin-top:4px">卖方销售 ×1 · 我方 ×2 · 别家机构 ×2</div>
+    </div></div>`);
+  const lineup = [
+    {id:'sale', n:'卖方销售', sp:'guest'},
+    {id:'tech', n:'科技研究员', sp:'tech'},
+    {id:'serenity', n:'Serenity', sp:'serenity'},
+    {id:'rivalA', n:'猛虎基金研究员', sp:'guest'},
+    {id:'rivalB', n:'鲸吞资本研究员', sp:'guest'}
+  ];
+  lineup.forEach((p,i)=> addSeat(p, W/2 - 240 + i*100, 300, {bar:false}));
+  await wait(900);
+
+  /* 阶段 2：像素大巴过场 */
+  setStep(1);
+  log('<b>上车</b> 大巴出发。车上卖方销售开始铺垫：「董秘今天心情不错」');
+  const bus = el('div','', '');
+  bus.style.cssText = `position:absolute;left:-180px;top:52%;width:150px;height:56px;z-index:20;
+    background:var(--mustard);box-shadow:inset 0 0 0 3px var(--ink);`;
+  bus.innerHTML = `<div style="position:absolute;left:8px;top:8px;right:8px;height:18px;background:#a8d4e4;box-shadow:inset 0 0 0 2px var(--ink)"></div>
+    <div style="position:absolute;left:14px;bottom:-10px;width:18px;height:18px;background:#3f2b23;border-radius:0"></div>
+    <div style="position:absolute;right:14px;bottom:-10px;width:18px;height:18px;background:#3f2b23"></div>
+    <div style="position:absolute;right:-2px;top:30px;font-size:9px;font-weight:700;color:var(--ink)">X司专线</div>`;
+  stage.appendChild(bus);
+  lineup.forEach(p=>{ const s = SCENE.seats[p.id]; if(s) s.style.display = 'none'; });
+  for(let x = -180; x < W + 40; x += 14){
+    if(SCENE.skip) break;
+    bus.style.left = x + 'px';
+    await sleep(28);
+    while(SCENE.paused && !SCENE.skip) await sleep(80);
+  }
+  bus.remove();
+
+  /* 阶段 3：董秘 Q&A */
+  setStep(2);
+  $('#tableTop').innerHTML = `<div>
+    <div class="cap">X 公司 · 会议室</div>
+    <div class="row" style="justify-content:center;margin:6px 0">${avatarHTML('oldmoney','s4')}</div>
+    <b style="font-size:11px">董秘</b>
+    <div class="t-xs t-dim" style="font-weight:700">「欢迎各位老师」</div></div>`;
+  lineup.slice(1).forEach((p,i)=>{
+    const s = SCENE.seats[p.id]; if(s){ s.style.display=''; s.style.left = (W/2 - 220 + i*112) + 'px'; s.style.top = '350px'; }
+  });
+  const qa = [
+    ['tech',   '公司 Q3 产能规划方便展开吗？', '产能情况以公告为准。', 'taiji'],
+    ['serenity','那换个问法：现在下单，交期比 Q1 长了还是短了？', '这个……交期确实在拉长，具体不方便说。', 'leak'],
+    ['tech',   '拉长是因为需求还是因为你们在改产线？', 'Q3 排产确实比较满，改产线的事没有的。', 'leak'],
+    ['rivalA', '（猛虎基金研究员飞快记下了这句）', '', 'rival']
+  ];
+  for(const [who, q, a, kind] of qa){
+    if(q) log(`<b>${lineup.find(p=>p.id===who)?.n || who}</b>：${q}`);
+    if(a){
+      await wait(600);
+      log(`董秘：${a}` + (kind==='taiji' ? ' <span class="t-rose">[太极]</span>' : ' <span class="t-cyan">[有信息量]</span>'), kind==='taiji' ? 'warn' : 'hi');
+    } else { await wait(500); log(q, 'warn'); }
+    await wait(400);
+  }
+
+  /* 阶段 4：纪要沉淀 */
+  setStep(3);
+  await wait(400);
+  const n = DATA.atlas.find(x=>x.name === '大硅片');
+  if(n) n.validated = (n.validated || 0) + 1;
+  $('#outPane').innerHTML = win('调研纪要', `
+    <div class="minutes">
+      <h4>X 公司调研 · ${$('#tbDate').textContent}</h4>
+      <div class="sec"><span class="k">太极</span> 「产能以公告为准」—— 无信息量，董秘标准开场</div>
+      <div class="sec"><span class="k">干货 ★</span> 交期在拉长（追问两轮后松口）</div>
+      <div class="sec"><span class="k">干货 ★★</span> 「Q3 排产确实比较满」—— 与饭局线索、排产表三方互证</div>
+      <div class="sec"><span class="k">沉淀</span> 已入知识库沉淀层（大硅片 ⚑+1），一手 evidence</div>
+      <div class="sec"><span class="k">竞争</span> 同行两家研究员在场，同样记走了排产口径</div>
+    </div>
+    <div class="bridge">信息衰减警告：同行也听到了。<b>T+2 之后这条视为市场共识</b>，超额收益窗口只有两天。</div>`,
+    {color:'mustard'});
+  pushDaily('track', '出差调研回来：「Q3 排产较满」已沉淀（⚑）。注意：T+2 后视为市场共识');
+  log('<b>纪要已沉淀</b>：大硅片 ⚑+1 · 共识衰减计时开始', 'hi');
+  SCENES_TODAY++; $('#tbScene').textContent = SCENES_TODAY;
+  SCENE.running = false;
+}
+
+/* ---------- 世界地图入口桥接 ---------- */
+function startVenueDinner(venueKey){
+  DINNER_VENUE = venueKey;
+  openComponent('scenes');
+  const sc = DATA.scenes.find(x=>x.id==='dinner');
+  setTimeout(()=> openScene(sc), 60);
+}
+function startFieldTrip(){
+  openComponent('scenes');
+  const sc = DATA.scenes.find(x=>x.id==='trip');
+  setTimeout(()=> openScene(sc), 60);
+}
+function startStrategyMeet(){
+  openModal(`
+    <div class="win-bar" style="background:var(--mustard);color:var(--ink)">
+      <span>金陆大酒店 · 上市公司交流策略会</span><span class="dots" id="mClose" style="cursor:pointer">_ □ ×</span></div>
+    <div style="padding:13px">
+      <div style="background:#eaf1fb;box-shadow:inset 0 0 0 3px var(--ink);padding:12px;text-align:center">
+        <div class="cap">宴会厅</div>
+        <div class="row" style="justify-content:center;margin:8px 0">${avatarHTML('oldmoney','s4')}</div>
+        <b style="font-size:11px">台上：某上市公司董事长</b>
+        <div class="t-xs t-dim" style="font-weight:700;margin:4px 0">「我们对下半年充满信心」（第 3 次）</div>
+        <hr class="hr" style="margin:8px 0">
+        <div class="row" style="justify-content:center;gap:4px">
+          ${['tech','guest','guest','macro','guest','guest'].map(k=>avatarHTML(k,'s2')).join('')}
+        </div>
+        <div class="t-xs t-dim" style="font-weight:700">台下：各家机构研究员一排（我方 ×2）</div>
+      </div>
+      <div class="flowmap" style="margin-top:10px">
+        ${['董事长开讲','管理层 Q&A','我方举手提问','茶歇堵人','纪要回流'].map((f,i)=>
+          (i?'<span class="flowarw">▸</span>':'') + `<span class="flownode ${i===2?'hi':''}">${f}</span>`).join('')}
+      </div>
+      <div class="bridge" style="margin-top:10px">策略会纪律：台上说的都是公告里有的。<b>真信息在茶歇堵人环节</b>——demo 里此场景仅布景，完整流程见晨会/反路演/饭局/调研四个已跑通场景。</div>
+    </div>`);
+  $('#mClose').onclick = closeModal;
+}
