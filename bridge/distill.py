@@ -47,6 +47,27 @@ def _read_kw(path):
         pass
     return m
 
+PANEL = os.path.join(SA, "hotdata", "panel.jsonl")
+_panel_cache = None
+def _panel_hook(kw):
+    """热搜词的引子 = panel.jsonl 里该词最近的高热研报/讨论标题"""
+    global _panel_cache
+    if _panel_cache is None:
+        _panel_cache = []
+        try:
+            for l in open(PANEL, encoding="utf-8"):
+                try: _panel_cache.append(json.loads(l))
+                except: pass
+        except Exception:
+            _panel_cache = []
+    hits = [r for r in _panel_cache
+            if kw in (str(r.get("theme","")) + str(r.get("title","")))]
+    hits.sort(key=lambda r: -int(r.get("views", 0) or 0))
+    if hits:
+        t = str(hits[0].get("title", ""))
+        return re.sub(r"^[^｜|]+[｜|]\s*", "", t)[:40]   # 去掉"某研究｜"前缀
+    return ""
+
 def insight_daily(n=3):
     """机构搜索关键词周环比 → 本周涨最快/新起的热点（真·近期萌芽）"""
     out = {"generated_at": datetime.now().isoformat(timespec="seconds"), "items": []}
@@ -73,17 +94,17 @@ def insight_daily(n=3):
         ranked.append((score, k, v, p, delta, ratio, fresh))
     ranked.sort(key=lambda x: -x[0])
     for score, k, v, p, delta, ratio, fresh in ranked[:n]:
-        if fresh:
-            hook = f"本周机构搜索里<b>凭空冒出来</b>：{v} 次搜索，上周还是 0"
-            why = "这周才进机构视野，最典型的萌芽信号——趁没人写研报先看"
-        else:
-            hook = f"本周搜索 {v} 次，上周 {p} 次，<b>涨 {ratio:.1f} 倍</b>（+{delta}）"
-            why = f"关注度一周内{ratio:.1f}倍拉升，机构注意力正在快速切换过来"
+        # 火焰热度：新起或翻倍=3🔥，明显上升=2🔥，温和=1🔥
+        if fresh or ratio >= 2 or v >= 40: heat = 3
+        elif ratio >= 1.4 or v >= 22: heat = 2
+        else: heat = 1
         out["items"].append({
             "theme": k, "count": v, "prev": p, "delta": delta,
-            "ratio": round(ratio, 1), "fresh": fresh,
-            "score": round(score, 1), "as_of": cur_date,
-            "hook": hook, "why": why,
+            "ratio": round(ratio, 1), "fresh": fresh, "heat": heat,
+            "topic": _panel_hook(k), "as_of": cur_date,
+            "method": (f"「{k}」本周机构搜索 {v} 次，上周 {p} 次，"
+                       + ("本周凭空新起" if fresh else f"环比涨 {ratio:.1f} 倍（+{delta}）")
+                       + f"。数据={cur_date} 机构搜索关键词周环比。"),
         })
     out["ok"] = True
     return out

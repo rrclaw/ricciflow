@@ -28,29 +28,29 @@ async function renderInsightFeed(mount){
   const box = mount || $('#ideaFeed'); if(!box) return;
   box.innerHTML = '<div class="t-dim" style="font-weight:700;padding:8px">扫描机构搜索热度…</div>';
   const d = await insightFetch();
+  const methodAll = d.live
+    ? `热搜=机构搜索关键词周环比（本周 vs 上周），取涨最快 + 本周新起。🔥数=热度分级。数据截至 ${d.as_of||''}。实时源 aihot/polymarket 接入中。`
+    : '本地桥未运行，显示演示占位。跑起 kb-bridge 即为真实机构热搜。';
   box.innerHTML = `
     <div class="row" style="margin-bottom:7px">
       <span class="tag ${d.live?'cyan':'rose'}">${d.live?'🟢 实时':'演示'}</span>
-      <span class="t-xs t-dim" style="font-weight:700">${d.source || ''}</span>
+      ${infoDot(methodAll)}
       <span class="sp"></span>
       <button class="px-btn sm ghost" id="insightRefresh">↻</button></div>` +
     d.items.map((it, i)=>`
       <div class="gap-item" style="margin-bottom:7px">
         <div class="gt">
-          <span class="tag ${it.fresh?'rose':'gold'}">${it.fresh?'🔥 新起':'📈 涨'+it.ratio+'x'}</span>
-          <b style="flex:1">${it.theme}</b>
-          ${it.count?`<span class="tag">${it.count} 搜</span>`:''}
+          <b style="flex:1;font-size:13px">${it.theme}</b>
+          <span title="热度">${'🔥'.repeat(it.heat||1)}</span>
+          ${infoDot(it.method || '')}
         </div>
-        <div class="why" style="color:var(--ink)">${it.hook || ''}</div>
-        ${it.why?`<div class="t-xs t-dim" style="font-weight:700;line-height:1.6;margin:3px 0 5px">为什么现在看：${it.why}</div>`:''}
-        <div class="row" style="gap:4px">
-          <button class="px-btn sm" data-ins-go="${it.theme}">▸ 立课题研究</button>
+        ${it.topic?`<div class="why" style="color:var(--dim)">引子：${it.topic}</div>`:''}
+        <div class="row" style="gap:4px;margin-top:4px">
+          <button class="px-btn sm" data-ins-go="${it.theme}">▸ 立课题</button>
           <button class="px-btn sm ghost" data-ins-ask="${it.theme}">? 怎么问</button>
           <button class="px-btn sm ghost" data-ins-clue="${it.theme}">≡ 存线索</button>
         </div>
-      </div>`).join('') +
-    `<div class="t-xs t-dim" style="font-weight:700;line-height:1.6;margin-top:4px">
-       ${d.live?'按机构搜索热度<b>周环比</b>排：涨最快 + 本周新起。'+(d.as_of?'数据截至 '+d.as_of+'。':'')+'实时源(aihot/polymarket)接入中。':''}</div>`;
+      </div>`).join('');
   const rf = $('#insightRefresh'); if(rf) rf.onclick = async ()=>{ await insightFetch(true); renderInsightFeed(mount); };
   $$('[data-ins-go]').forEach(b=> b.onclick = ()=>{
     DATA.tickets.push({id:'t'+Date.now(), title:b.dataset.insGo, stage:0, days:0,

@@ -586,3 +586,9 @@ body{
 .guard-figure{display:flex;justify-content:center;align-items:flex-end;gap:22px;margin:8px 0 4px}
 .guard-say{background:#fff8e8;box-shadow:inset 0 0 0 3px var(--ink);color:var(--ink);
   padding:8px 10px;font-size:12px;font-weight:700;line-height:1.7;max-width:300px;text-align:left}
+
+/* ⓘ 半隐藏方法论徽标 */
+.info-dot{display:inline-block;width:15px;height:15px;line-height:15px;text-align:center;
+  font-size:11px;color:var(--dim);cursor:help;opacity:.5;vertical-align:middle;
+  border-radius:50%;box-shadow:inset 0 0 0 1px var(--dim)}
+.info-dot:hover{opacity:1;color:var(--coral);box-shadow:inset 0 0 0 1px var(--coral)}

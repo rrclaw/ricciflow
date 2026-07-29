@@ -54,3 +54,22 @@ $('#modal').onclick = e => { if(e.target.id === 'modal') closeModal(); };
 
 /* ---- V1 路由的替代品：组件注册表挂在 shell.js，RENDER 表保留原名 ---- */
 const RENDER = {};
+
+/* ---------- 通用 ⓘ 方法论徽标：半隐藏，悬停展开 ---------- */
+function infoDot(text){
+  const t = String(text).replace(/"/g,'&quot;');
+  return `<span class="info-dot" data-info="${t}">ⓘ</span>`;
+}
+/* 事件代理：悬停/点击 ⓘ 出浮层（复用 tipbox） */
+document.addEventListener('mouseover', e=>{
+  const d = e.target.closest && e.target.closest('.info-dot');
+  if(d) showTip('<b>方法论</b><br>' + d.dataset.info, e);
+});
+document.addEventListener('mouseout', e=>{
+  if(e.target.closest && e.target.closest('.info-dot')) hideTip();
+});
+document.addEventListener('click', e=>{
+  const d = e.target.closest && e.target.closest('.info-dot');
+  if(d){ e.stopPropagation(); showTip('<b>方法论</b><br>' + d.dataset.info, e);
+    setTimeout(hideTip, 4000); }
+});
