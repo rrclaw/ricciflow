@@ -178,6 +178,7 @@ RENDER.atlas = function(){
         <button class="px-btn sm ${ATLAS_LAYER==='all'?'on':''}" data-layer="all">全部</button>
         <button class="px-btn sm ${ATLAS_LAYER==='raw'?'on':''}" data-layer="raw">只看原始</button>
         <button class="px-btn sm ${ATLAS_LAYER==='validated'?'on':''}" data-layer="validated">只看沉淀 ⚑</button>
+        <button class="px-btn sm" id="btnVaultRoom">🔐 机房 · 内部资料库</button>
         <span class="sp"></span>
         <span class="t-xs t-dim" style="font-weight:700">${DATA.atlas.length} 节点 · ${DATA.atlas.filter(n=>n.docs===0).length} 黑洞 · ⚑${DATA.atlas.reduce((a,n)=>a+(n.validated||0),0)} 条沉淀</span>
       </div>
@@ -201,6 +202,7 @@ RENDER.atlas = function(){
   $$('[data-dim]').forEach(b=> b.onclick = ()=>{ ATLAS_DIM = b.dataset.dim; RENDER.atlas(); });
   $$('[data-co]').forEach(b=> b.onclick = ()=>{ ATLAS_CO = b.dataset.co; RENDER.atlas(); });
   $$('[data-layer]').forEach(b=> b.onclick = ()=>{ ATLAS_LAYER = b.dataset.layer; RENDER.atlas(); });
+  const vr = $('#btnVaultRoom'); if(vr) vr.onclick = ()=> openVaultRoom();
 
   drawLegend();
   drawGaps(gaps);

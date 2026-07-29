@@ -266,7 +266,7 @@ const CITY = {
     {isl:'lujiazui', id:'hotel', n:'金陆大酒店', ix:10.0, iy:8.6, style:'hotel', sign:['金陆大酒店 ★★★★★'],
      label:'五星酒店 · 上市公司策略会', use:()=> startStrategyMeet && startStrategyMeet()},
     {isl:'lujiazui', id:'campus', n:'X 公司产业园', ix:13.0, iy:8.6, style:'campus', sign:['X 公司产业园'],
-     label:'X公司园区 · 需券商带队', use:()=> toast('直接闯不进去。去中银河证券集合，卖方带队才见得到董秘')},
+     label:'X公司园区 · 纪要资料库', use:()=> openBuildingBrowser('campus')},
     /* —— 华尔街 —— */
     {isl:'wallst', id:'nyse', n:'NYSE', ix:1.2, iy:1.6, style:'nyse', sign:['NYSE']},
     {isl:'wallst', id:'tiger', n:'猛虎基金', ix:5.4, iy:1.2, style:'tower', h:150, c:'#d08a3e', sign:['TIGER FUND'],
@@ -779,4 +779,19 @@ function visitVenue(key){
   enterRoom(venueRoom(key), 6, 7);
   setLocation('venue:' + key, VENUE_DECOR[key].n + ' · 听墙角中');
   toast('研究员在聊。想正式开局就走到吧台按 E');
+}
+
+
+/* 券商楼：研报库 or 组团调研 二选一 */
+function openBrokerTower(){
+  openModal(`
+    <div class="win-bar" style="background:var(--coral)"><span>中银河证券 · 前台</span>
+      <span class="dots" id="mClose" style="cursor:pointer">_ □ ×</span></div>
+    <div style="padding:13px"><div class="col" style="gap:6px">
+      <button class="px-btn" id="bkLib" style="width:100%">📚 进研报库（按券商分层浏览）</button>
+      <button class="px-btn" id="bkTrip" style="width:100%">🚌 组团出差调研（卖方带队见董秘）</button>
+    </div></div>`);
+  $('#mClose').onclick = closeModal;
+  $('#bkLib').onclick = ()=>{ closeModal(); openBuildingBrowser('broker'); };
+  $('#bkTrip').onclick = ()=>{ closeModal(); startFieldTrip(); };
 }

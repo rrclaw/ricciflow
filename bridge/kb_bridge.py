@@ -1,0 +1,202 @@
+#!/usr/bin/env python3
+"""ricciflow kb-bridge — 本地知识库只读桥（老板钥匙鉴权）
+
+只绑 127.0.0.1:8331。只读 ~/knowledge，唯一写入是本目录的 carried.jsonl（搬运登记）。
+公网 demo 永远不接这里；浏览器本地打开游戏时自动探测。
+
+跑法:  python3 bridge/kb_bridge.py
+首次运行自动生成老板钥匙（6 位数字，保险库转盘用），打印在终端并存 boss.key。
+
+零依赖：stdlib http.server。
+"""
+import http.server
+import json
+import random
+import re
+import time
+from pathlib import Path
+from urllib.parse import urlparse, parse_qs
+
+KB = Path.home() / "knowledge" / "knowledge"
+HERE = Path(__file__).parent
+KEY_FILE = HERE / "boss.key"
+CARRY_FILE = HERE / "carried.jsonl"
+PORT = 8331
+
+if not KEY_FILE.exists():
+    KEY_FILE.write_text("".join(random.choice("0123456789") for _ in range(6)))
+BOSS_KEY = KEY_FILE.read_text().strip()
+
+# ---------------- 楼宇分拣规则（只读虚拟打标，不改动知识库本体） ----------------
+BROKER_HINTS = ["研报", "点评", "sell", "sellside", "sell_side", "券商", "首次覆盖", "深度报告",
+                "morgan", "goldman", "ubs", "citi", "jpm", "中金", "中信", "华泰", "国盛",
+                "招商", "广发", "兴业", "OW", "Overweight", "评级"]
+CAMPUS_HINTS = ["纪要", "调研", "专家", "交流", "电话会", "路演", "访谈", "expert", "call",
+                "透露", "反馈", "会议纪要"]
+MEDIA_HINTS = ["公告", "财联社", "cninfo", "巨潮", "新闻", "报道", "wsj", "theinformation",
+               "the information", "semianalysis", "reuters", "bloomberg", "预告", "季度报告",
+               "年度报告", "announcement", "media", "推送"]
+
+def classify(meta):
+    st = str(meta.get("source_type", "")).lower()
+    if st in ("sell_side", "sellside", "broker"): return "broker"
+    if st in ("expert", "company_call", "expert_call"): return "campus"
+    if st in ("announcement", "media", "news"): return "media"
+    blob = " ".join(str(meta.get(k, "")) for k in
+                    ("title", "raw_path", "source", "kb_name", "scope", "content_type", "event_type")).lower()
+    def hit(hints): return sum(1 for h in hints if h.lower() in blob)
+    scores = {"broker": hit(BROKER_HINTS), "campus": hit(CAMPUS_HINTS), "media": hit(MEDIA_HINTS)}
+    best = max(scores, key=scores.get)
+    return best if scores[best] > 0 else "archive"
+
+def guess_broker(meta):
+    m = re.search(r"(中金|中信建投|中信|华泰|国盛|招商|广发|兴业|申万|海通|国君|国泰君安|东吴|民生|天风|长江|浙商|方正|光大|银河|安信|华创|东方证券|Morgan Stanley|Goldman|UBS|JPM|Citi|BofA|Jefferies|Bernstein|Wells ?Fargo)",
+                  str(meta.get("title", "")) + " " + str(meta.get("raw_path", "")), re.I)
+    return m.group(1) if m else ""
+
+def tickers_str(t):
+    """tickers 字段形态百出：str/JSON字符串/list[str]/list[dict]，全部驯成串"""
+    if not t: return ""
+    if isinstance(t, str):
+        if t.startswith("["):
+            try: t = json.loads(t.replace("'", '"'))
+            except Exception: return t.strip("[]' ")
+        else: return t
+    out = []
+    for x in (t if isinstance(t, list) else [t]):
+        if isinstance(x, dict):
+            out.append(str(x.get("sec_name") or x.get("ticker") or x.get("code") or ""))
+        else:
+            out.append(str(x))
+    return ",".join(v for v in out if v)
+
+# ---------------- 装载 ----------------
+DOCS = {}
+
+def load():
+    docs = {}
+    src = KB / "index" / "sources.jsonl"
+    if src.exists():
+        for line in src.read_text(errors="ignore").splitlines():
+            try: m = json.loads(line)
+            except Exception: continue
+            did = m.get("source_id") or m.get("id")
+            if not did: continue
+            docs[did] = {
+                "id": did, "title": m.get("title", "")[:120], "date": m.get("date", ""),
+                "building": classify(m), "broker": guess_broker(m),
+                "company": tickers_str(m.get("tickers")),
+                "conf": m.get("confidence_grade", "C"), "layer": "raw",
+                "_path": str(KB / m["raw_path"]) if m.get("raw_path") else "",
+            }
+    for f in (KB / "normalized").rglob("*.json"):
+        try: m = json.loads(f.read_text(errors="ignore"))
+        except Exception: continue
+        did = m.get("doc_id")
+        if not did or did in docs: continue
+        docs[did] = {
+            "id": did, "title": (m.get("title") or "")[:120], "date": m.get("date", "") or (m.get("ingested_at", "") or "")[:10],
+            "building": classify(m), "broker": guess_broker(m),
+            "company": m.get("sec_name") or tickers_str(m.get("tickers")),
+            "conf": "B", "layer": "normalized", "_path": str(f), "_inline": bool(m.get("content") or m.get("snippet")),
+        }
+    return docs
+
+def doc_content(d):
+    p = Path(d.get("_path", ""))
+    if d.get("layer") == "normalized" and p.exists():
+        m = json.loads(p.read_text(errors="ignore"))
+        return (m.get("content") or m.get("snippet") or m.get("summary") or "")[:200000]
+    if p.exists() and p.suffix == ".md":
+        return p.read_text(errors="ignore")[:200000]
+    return "(原文文件未找到: 注册表有账但文件不在位)"
+
+# ---------------- HTTP ----------------
+class H(http.server.BaseHTTPRequestHandler):
+    def _send(self, code, obj):
+        body = json.dumps(obj, ensure_ascii=False).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Headers", "Authorization, Content-Type")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _auth(self):
+        q = parse_qs(urlparse(self.path).query)
+        tok = (self.headers.get("Authorization", "").replace("Bearer ", "") or
+               (q.get("key") or [""])[0])
+        return tok == BOSS_KEY
+
+    def do_OPTIONS(self):
+        self._send(200, {})
+
+    def log_message(self, *a): pass
+
+    def do_GET(self):
+        u = urlparse(self.path); q = parse_qs(u.query)
+        if u.path == "/api/health":
+            return self._send(200, {"ok": True, "docs": len(DOCS), "auth": self._auth()})
+        if not self._auth():
+            return self._send(401, {"error": "老板钥匙不对。保安请你去前台喝茶"})
+        if u.path == "/api/buildings":
+            inv = {}
+            for d in DOCS.values():
+                inv[d["building"]] = inv.get(d["building"], 0) + 1
+            return self._send(200, inv)
+        if u.path == "/api/docs":
+            b = (q.get("building") or [""])[0]
+            broker = (q.get("broker") or [""])[0].lower()
+            comp = (q.get("company") or [""])[0].lower()
+            kw = (q.get("q") or [""])[0].lower()
+            limit = int((q.get("limit") or ["60"])[0])
+            out = [
+                {k: v for k, v in d.items() if not k.startswith("_")}
+                for d in DOCS.values()
+                if (not b or d["building"] == b)
+                and (not broker or broker in d["broker"].lower())
+                and (not comp or comp in (d["company"] + d["title"]).lower())
+                and (not kw or kw in d["title"].lower())
+            ]
+            out.sort(key=lambda x: x["date"] or "", reverse=True)
+            return self._send(200, {"total": len(out), "docs": out[:limit]})
+        if u.path.startswith("/api/doc/"):
+            did = u.path.split("/api/doc/")[1]
+            d = DOCS.get(did)
+            if not d: return self._send(404, {"error": "无此文档"})
+            return self._send(200, {**{k: v for k, v in d.items() if not k.startswith("_")},
+                                    "content": doc_content(d)})
+        if u.path == "/api/carried":
+            rows = []
+            if CARRY_FILE.exists():
+                rows = [json.loads(x) for x in CARRY_FILE.read_text().splitlines() if x.strip()]
+            return self._send(200, {"rows": rows})
+        self._send(404, {"error": "not found"})
+
+    def do_POST(self):
+        if not self._auth():
+            return self._send(401, {"error": "no key"})
+        u = urlparse(self.path)
+        if u.path == "/api/carry":
+            n = int(self.headers.get("Content-Length", 0))
+            body = json.loads(self.rfile.read(n) or b"{}")
+            d = DOCS.get(body.get("id", ""))
+            if not d: return self._send(404, {"error": "无此文档"})
+            row = {"id": d["id"], "title": d["title"], "building": d["building"],
+                   "broker": d["broker"], "company": d["company"], "date": d["date"],
+                   "processed_by": body.get("by") or "",     # 新增强制带研究员；存量另案
+                   "carried_at": time.strftime("%Y-%m-%d %H:%M")}
+            with CARRY_FILE.open("a") as f:
+                f.write(json.dumps(row, ensure_ascii=False) + "\n")
+            return self._send(200, {"ok": True, "row": row})
+        self._send(404, {"error": "not found"})
+
+if __name__ == "__main__":
+    DOCS = load()
+    inv = {}
+    for d in DOCS.values(): inv[d["building"]] = inv.get(d["building"], 0) + 1
+    print(f"kb-bridge 就绪 · 共 {len(DOCS)} 份文档 · 楼宇库存: {inv}")
+    print(f"老板钥匙（保险库转盘密码）: {BOSS_KEY}")
+    print(f"http://127.0.0.1:{PORT}  · 只读 ~/knowledge · Ctrl-C 停")
+    http.server.ThreadingHTTPServer(("127.0.0.1", PORT), H).serve_forever()

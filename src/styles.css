@@ -549,3 +549,18 @@ body{
 @media (max-width:760px){
   .gd-card{width:30px;height:44px;margin-left:-10px}
 }
+
+/* ==========================================================================
+   保险库转盘
+   ========================================================================== */
+.vault-dial{width:86px;height:86px;margin:0 auto 10px;background:#5a616b;border-radius:50%;
+  box-shadow:inset 0 0 0 4px var(--ink), inset 0 0 0 10px #454b54;position:relative;
+  transition:transform .25s steps(4)}
+.vault-dial i{position:absolute;left:50%;top:4px;width:6px;height:22px;background:var(--mustard);
+  transform:translateX(-50%);box-shadow:inset 0 0 0 2px var(--ink)}
+.vault-display{font-size:20px;font-weight:700;letter-spacing:.2em;background:#101018;
+  color:#57bfb4;padding:8px 0;margin-bottom:10px;box-shadow:inset 0 0 0 3px var(--ink)}
+.vault-pad{display:grid;grid-template-columns:repeat(3,64px);gap:6px;justify-content:center}
+.vault-key{height:44px;background:var(--cream2);box-shadow:inset 0 0 0 3px var(--ink);
+  font-size:16px;font-weight:700;cursor:pointer}
+.vault-key:hover{background:var(--mustard)}

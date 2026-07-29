@@ -302,6 +302,29 @@ async def main():
         check(await page.locator("text=本月利润").count() >= 1, "财务处利润结算")
         await page.click("#panelClose")
 
+        # ---------- 三楼资料库 / 保险库 / 机房 ----------
+        real_key = (ROOT / "bridge" / "boss.key")
+        vkey = real_key.read_text().strip() if real_key.exists() else "246810"
+        await page.evaluate("localStorage.removeItem('rf_boss_key'); VAULT.key=''; VAULT.live=false")
+        await page.evaluate("openBuildingBrowser('media')"); await page.wait_for_timeout(300)
+        check(await page.locator("text=保安亭").count() == 1, "没钥匙 → 保安拦截")
+        await page.click("#grdKey"); await page.wait_for_timeout(300)
+        check(await page.eval_on_selector_all(".vault-key", "e=>e.length") == 12, "保险库转盘键盘 12 键")
+        for ch in vkey:
+            await page.click(f'[data-vk="{ch}"]'); await page.wait_for_timeout(50)
+        await page.click('[data-vk="⏎"]'); await page.wait_for_timeout(1500)
+        check(await page.evaluate("vaultUnlocked()"), "钥匙入库 → 保险库解锁")
+        await page.wait_for_timeout(1200)
+        check(await page.eval_on_selector_all("#bldList .gap-item", "e=>e.length") >= 2, "楼内资料成列")
+        await page.click("#bldList [data-bld-carry]"); await page.wait_for_timeout(300)
+        await page.click("#modalBox [data-cby]"); await page.wait_for_timeout(700)
+        check(await page.evaluate("DATA.carried.length") >= 1, "搬运登记 + 记名研究员")
+        await page.evaluate("closePanel()")
+        await page.evaluate("openVaultRoom()"); await page.wait_for_timeout(900)
+        check(await page.locator("text=双溯源").count() >= 1, "机房双溯源视图")
+        await page.click("#mClose")
+        await page.evaluate("localStorage.removeItem('rf_boss_key')")
+
         # ---------- PWA / 收尾 ----------
         mf = await page.evaluate("fetch('manifest.webmanifest').then(r=>r.status)")
         check(mf == 200, "PWA manifest 可达")
