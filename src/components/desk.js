@@ -123,6 +123,7 @@ RENDER.desk = function(){
       <h1>THE DESK</h1>
       <span class="sub">研究员 · 拧滑块就换方法论，发言实时变</span>
       <div class="tools">
+        <button class="px-btn on dotted" id="btnGacha">⊕ 角色抽卡</button>
         <button class="px-btn" id="btnNewR">＋ 自定义研究员</button>
         <button class="px-btn ghost" id="btnResetR">↺ 恢复默认性格</button>
       </div>
@@ -136,6 +137,7 @@ RENDER.desk = function(){
     <div class="desk" id="deskGrid"></div>`;
 
   drawDesk();
+  $('#btnGacha').onclick = openGacha;
   $('#btnNewR').onclick = openNewResearcher;
   $('#btnResetR').onclick = ()=>{ DATA.researchers.forEach(r=>{
       const d = DEFAULT_PERSONA[r.id]; if(d){ r.aggr=d[0]; r.indep=d[1]; r.horizon=d[2]; }
@@ -189,10 +191,10 @@ function researcherCard(r){
     <div class="rhead">
       ${avatarHTML(r.sp,'s4')}
       <div>
-        <div class="rname">${r.n} ${r.veto?'<span class="tag rose">VETO</span>':''}</div>
+        <div class="rname">${r.n} ${rarityBadge(r)} ${r.veto?'<span class="tag rose">VETO</span>':''}</div>
         <div class="rproto">${r.proto}</div>
       </div>
-      <div class="lv">LV.${r.lv}<br><span class="t-xs t-dim">XP ${r.xp}%</span></div>
+      <div class="lv">LV.${r.lv}<br><span class="t-xs t-dim" title="LV = 沉淀资料丰富度">沉淀度</span></div>
     </div>
     <div class="px-bar thin mustard" style="margin-bottom:4px"><i style="width:${r.xp}%"></i></div>
 
@@ -239,7 +241,8 @@ function reviewBlock(r){
     ? sparkHTML(nav, 250, 34, rv.pip ? 'var(--coral)' : 'var(--teal)') : '';
   return `
   <div style="border-top:3px dashed var(--ink);margin-top:8px;padding-top:7px">
-    <div class="row">
+    ${trustBar(r.id)}
+    <div class="row" style="margin-top:6px">
       <span class="cap">考核</span><span class="demo-mark">编造值</span>
       <span class="tag ${rv.rank<=3?'gold':''}">#${rv.rank}</span>
       ${rv.pip ? '<span class="tag rose">PIP 观察期</span>' : ''}
@@ -437,7 +440,7 @@ function openResearcherPanel(id){
         <div class="col">
           ${win('灵魂 · 老板可现调', `
             <div class="row" style="margin-bottom:9px">${avatarHTML(r.sp,'s5')}
-              <div><b style="font-size:14px">${r.n}</b> ${r.veto?'<span class="tag rose">VETO</span>':''}
+              <div><b style="font-size:14px">${r.n}</b> ${rarityBadge(r)} ${r.veto?'<span class="tag rose">VETO</span>':''}
                 <div class="rproto">${r.proto}</div>
                 <div class="row" style="gap:4px;margin-top:4px">
                   <span class="tag ${rv.rank<=3?'gold':''}">考核 #${rv.rank||'-'}</span>
@@ -445,6 +448,7 @@ function openResearcherPanel(id){
                   <span class="tag">${rv.status||'在岗'}</span>
                 </div></div></div>
             <div class="motto">「${r.motto}」</div>
+            <div style="margin-top:8px">${trustBar(r.id, true)}</div>
             <div class="sliders" data-r="${r.id}" style="margin-top:9px">
               <div class="sld"><span class="lo">保守</span><input type="range" min="1" max="10" value="${r.aggr}" data-k="aggr"><span class="hi">激进</span></div>
               <div class="sld"><span class="lo">随大流</span><input type="range" min="1" max="10" value="${r.indep}" data-k="indep"><span class="hi">独立</span></div>
@@ -644,3 +648,166 @@ function openSoulEditor(id){
     if(saved) parseSoul(saved, r);
   });
 })();
+
+/* ==========================================================================
+   角色抽卡：SSR/SR/R（赚钱能力·实用性）· 信任血条 · LV=沉淀丰富度
+   现有班底也标定稀有度——诚实定级，不看职级看赚钱。
+   ========================================================================== */
+const RARITY_OF = { serenity:'SSR', risk:'SSR', tech:'SR', quant:'SR', oldmoney:'SR',
+  growth:'R', macro:'R', consume:'R' };
+const TRUST_INIT = { serenity:86, tech:74, macro:60, consume:35, growth:66,
+  oldmoney:78, quant:70, risk:95 };
+Object.entries(TRUST_INIT).forEach(([id, v])=>{
+  if(DATA.reviews[id]) DATA.reviews[id].trust = v;
+});
+
+function rarityOf(r){ return r.rarity || RARITY_OF[r.id] || 'R'; }
+function rarityBadge(r){
+  const t = rarityOf(r);
+  return `<span class="rarity ${t.toLowerCase()}">${t}</span>`;
+}
+function trustBar(id, wide){
+  const t = (DATA.reviews[id] && DATA.reviews[id].trust) ?? 50;
+  const cls = t >= 70 ? 'hi' : t >= 45 ? 'mid' : 'lo';
+  return `<div class="row" style="gap:6px">
+    <span class="cap" style="flex:none">信任 HP</span>
+    <div class="hpbar" style="flex:1;${wide?'':'max-width:150px'}"><i class="${cls}" style="width:${t}%"></i></div>
+    <b style="flex:none">${t}</b></div>`;
+}
+
+/* ---- 卡池（demo 固定 10 张，抽完即空；固定种子可复现） ---- */
+DATA.gachaPool = [
+  {tier:'SSR', n:'扫地僧', sp:'oldmoney', proto:'退休复出的传奇 PM',
+   factors:['周期钟摆','人性','仓位艺术'], motto:'我打过 2015。你们这叫波动？',
+   say:{hi:'这个位置，闭着眼睛买，睁着眼睛跑。', mid:'仓位减半，剩下的交给时间。', lo:'现金也是仓位。等。'},
+   aggr:6, indep:10, horizon:9, trust:70, lv:30},
+  {tier:'SSR', n:'K 线之神', sp:'growth', proto:'神秘牛散 · 十年百倍(自称)',
+   factors:['筹码结构','龙虎榜','情绪周期'], motto:'基本面是用来解释 K 线的。',
+   say:{hi:'主升浪确认，满上。', mid:'洗盘。拿住，别看账户。', lo:'情绪冰点，空仓看戏。'},
+   aggr:10, indep:9, horizon:2, trust:40, lv:22},
+  {tier:'SR', n:'产业链老兵', sp:'tech', proto:'前大厂供应链总监',
+   factors:['排产','库存水位','验厂'], motto:'报表会骗人，产线不会。',
+   say:{hi:'我打了三个电话，产线是真的满。', mid:'排产在爬，但没到抢产能的程度。', lo:'产线冷清，故事是编的。'},
+   aggr:5, indep:8, horizon:6, trust:65, lv:18},
+  {tier:'SR', n:'海归量化博士', sp:'quant', proto:'常春藤 PhD · 只信 t 值',
+   factors:['因子正交','半衰期','容量'], motto:'不显著就是不存在。',
+   say:{hi:'信号显著且未拥挤，加。', mid:'边际显著，小仓试。', lo:'p 值 0.3，这是占星不是投资。'},
+   aggr:4, indep:9, horizon:7, trust:60, lv:16},
+  {tier:'SR', n:'财报侦探', sp:'macro', proto:'专挖附注和现金流',
+   factors:['应收账款','存货周转','关联交易'], motto:'利润是观点，现金流是事实。',
+   say:{hi:'现金流干净得像样板间，重仓无虞。', mid:'有两处附注存疑，等问询函。', lo:'应收涨得比营收快，跑。'},
+   aggr:3, indep:8, horizon:8, trust:68, lv:15},
+  {tier:'R', n:'卷王实习生', sp:'guest', proto:'凌晨三点还在扒公告',
+   factors:['公告速读','会议纪要','表格'], motto:'老板我做了 40 页 PPT。',
+   say:{hi:'我整理了全行业数据！都在表里！', mid:'我再核对一遍。', lo:'这个我还没学过……我去学！'},
+   aggr:5, indep:3, horizon:5, trust:55, lv:3},
+  {tier:'R', n:'消息灵通老哥', sp:'guest', proto:'群比你多 · 饭局比你密',
+   factors:['小道消息','龙虎榜席位','传闻'], motto:'我有个朋友说……',
+   say:{hi:'三个群都在传，肯定有事。', mid:'消息对半信，先小仓。', lo:'群里静悄悄，没行情。'},
+   aggr:8, indep:2, horizon:1, trust:30, lv:8},
+  {tier:'R', n:'看图仙人', sp:'guest', proto:'均线是他的信仰',
+   factors:['均线','缠论','斐波那契'], motto:'一切都在图里。',
+   say:{hi:'金叉放量，天予不取反受其咎。', mid:'缠中枢震荡，等三买。', lo:'均线空头排列，图不会骗人。'},
+   aggr:7, indep:5, horizon:3, trust:35, lv:6},
+  {tier:'R', n:'佛系研究员', sp:'consume', proto:'不卷 · 但从不踩雷',
+   factors:['常识','估值','耐心'], motto:'看不懂的都不碰，所以我还活着。',
+   say:{hi:'这个我真看得懂，可以买。', mid:'再等等，不着急。', lo:'看不懂。pass。'},
+   aggr:2, indep:7, horizon:9, trust:62, lv:9},
+  {tier:'R', n:'公众号写手', sp:'guest', proto:'10w+ 制造机 · 择时反指',
+   factors:['流量','情绪','标题'], motto:'我发车的时候就是山顶。',
+   say:{hi:'这个题材我写一篇就能带火！', mid:'流量在起，但还没到全民讨论。', lo:'散户都不点开了，行情还早。'},
+   aggr:9, indep:1, horizon:2, trust:25, lv:5}
+];
+const GACHA_RATES = 'SSR 5% · SR 25% · R 70%（演示为固定种子，非真随机）';
+
+function gachaPull(){
+  if(!DATA.gachaPool.length) return null;
+  const roll = rnd();
+  let tier = roll < .05 ? 'SSR' : roll < .30 ? 'SR' : 'R';
+  /* 池里没这档就降级/升级找最近的 */
+  let cand = DATA.gachaPool.filter(c=>c.tier === tier);
+  if(!cand.length) cand = DATA.gachaPool.filter(c=>c.tier === 'SR');
+  if(!cand.length) cand = DATA.gachaPool;
+  const pick_ = cand[Math.floor(rnd() * cand.length)];
+  return pick_;
+}
+
+let GACHA_LEFT = 5;
+function openGacha(){
+  openModal(`
+    <div class="win-bar" style="background:linear-gradient(90deg,#e9b23c,#e8535a)">
+      <span>人才市场 · 角色抽卡</span><span class="dots" id="mClose" style="cursor:pointer">_ □ ×</span></div>
+    <div style="padding:13px">
+      <div class="row" style="margin-bottom:9px">
+        <span class="t-xs t-dim" style="font-weight:700">${GACHA_RATES}</span>
+        <span class="sp"></span>
+        <span class="tag gold">本季猎头预算 ${GACHA_LEFT} 抽</span></div>
+      <div class="gacha-stage" id="gachaStage">
+        <div class="gacha-card back" id="gachaCard"><div class="q">?</div>
+          <div class="t-xs" style="font-weight:700">池内剩 ${DATA.gachaPool.length} 人</div></div>
+      </div>
+      <div class="row" style="margin-top:10px;gap:6px">
+        <button class="px-btn on dotted" id="pullBtn" style="flex:1" ${GACHA_LEFT<=0||!DATA.gachaPool.length?'disabled':''}>
+          ⊕ 抽一发（剩 ${GACHA_LEFT}）</button>
+      </div>
+      <div class="t-xs t-dim" style="font-weight:700;margin-top:7px;line-height:1.7">
+        SSR/SR/R = 赚钱能力与实用性定级。抽到只是开始：信任 HP 靠共事攒，LV 靠沉淀资料涨。<br>
+        <span class="t-rose">R 卡不是废卡——公众号写手是全场最准的反指。</span></div>
+    </div>`);
+  $('#mClose').onclick = closeModal;
+  $('#pullBtn').onclick = doPull;
+}
+
+async function doPull(){
+  const btn = $('#pullBtn'); if(!btn || btn.disabled) return;
+  btn.disabled = true;
+  GACHA_LEFT--;
+  const card = $('#gachaCard'), stage = $('#gachaStage');
+  card.className = 'gacha-card back gacha-shake';
+  await sleep(520);
+  const c = gachaPull();
+  if(!c){ toast('池子空了'); return; }
+  DATA.gachaPool = DATA.gachaPool.filter(x=>x !== c);
+  const burst = el('div','gacha-burst ' + c.tier.toLowerCase());
+  stage.appendChild(burst);
+  setTimeout(()=>burst.remove(), 650);
+  card.className = 'gacha-card tier-' + c.tier.toLowerCase();
+  card.innerHTML = `
+    <div class="rarity ${c.tier.toLowerCase()}" style="font-size:13px">${c.tier}</div>
+    ${avatarHTML(c.sp,'s4')}
+    <b style="font-size:14px">${c.n}</b>
+    <div class="t-xs t-dim" style="font-weight:700;text-align:center;padding:0 8px">${c.proto}</div>
+    <div class="t-xs" style="font-weight:700">信任 ${c.trust} · LV.${c.lv}</div>`;
+  /* 签约区 */
+  let bar = $('#gachaSign');
+  if(!bar){
+    bar = el('div','row'); bar.id = 'gachaSign';
+    bar.style.cssText = 'margin-top:8px;gap:6px';
+    stage.parentElement.insertBefore(bar, stage.nextSibling);
+  }
+  bar.innerHTML = `
+    <button class="px-btn on" id="signBtn" style="flex:1">✍ 签下 ${c.n}</button>
+    <button class="px-btn ghost" id="passBtn">放回池子</button>`;
+  $('#signBtn').onclick = ()=>{
+    const id = 'g' + Date.now();
+    DATA.researchers.push({id, sp:c.sp, n:c.n, proto:c.proto, rarity:c.tier,
+      lv:c.lv, xp:10, adopt:0, hit:0, mdd:0, love:2, adopted:0, rejected:0,
+      aggr:c.aggr, indep:c.indep, horizon:c.horizon, factors:c.factors,
+      motto:c.motto, say:c.say});
+    DATA.reviews[id] = {hit:50, contrib:40, disc:60, rank:DATA.researchers.length,
+      status:'在岗', trust:c.trust};
+    DEFAULT_PERSONA[id] = [c.aggr, c.indep, c.horizon];
+    if(typeof pushDaily === 'function')
+      pushDaily('review', `抽卡入职：${c.tier} ${c.n}（${c.proto}）。信任 ${c.trust}，好好处`);
+    closeModal(); drawDesk();
+    toast(`${c.tier}！${c.n} 已入职。工位自己找`);
+  };
+  $('#passBtn').onclick = ()=>{
+    DATA.gachaPool.push(c);
+    bar.innerHTML = '';
+    toast('放回去了。他看你的眼神有点复杂');
+  };
+  const left = $('#pullBtn');
+  left.textContent = `⊕ 抽一发（剩 ${GACHA_LEFT}）`;
+  if(GACHA_LEFT > 0 && DATA.gachaPool.length) left.disabled = false;
+}

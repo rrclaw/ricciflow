@@ -262,6 +262,18 @@ async def main():
         check(await page.inner_text("#say-serenity") != pb, "看板里拖滑块当场改口")
         await page.evaluate("closePanel()")
 
+        # ---------- 抽卡 / 稀有度 / 信任血条 ----------
+        await page.click('[data-hud="desk"]'); await page.wait_for_timeout(600)
+        check(await page.eval_on_selector_all(".rarity.ssr", "e=>e.length") >= 2, "SSR 徽章 >= 2（Serenity/风控官）")
+        check(await page.eval_on_selector_all(".hpbar", "e=>e.length") >= 8, "信任血条全员挂上")
+        g0 = await page.evaluate("DATA.researchers.length")
+        await page.click("#btnGacha"); await page.wait_for_timeout(300)
+        await page.click("#pullBtn"); await page.wait_for_timeout(1200)
+        check(await page.eval_on_selector_all("#gachaCard .rarity", "e=>e.length") == 1, "抽卡翻面出稀有度")
+        await page.click("#signBtn"); await page.wait_for_timeout(400)
+        check(await page.evaluate("DATA.researchers.length") == g0 + 1, "签约 → 名册 +1")
+        await page.click("#panelClose")
+
         # ---------- PWA / 收尾 ----------
         mf = await page.evaluate("fetch('manifest.webmanifest').then(r=>r.status)")
         check(mf == 200, "PWA manifest 可达")

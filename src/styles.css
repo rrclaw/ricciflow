@@ -489,3 +489,38 @@ body{
 [style*="font-size:9px"]{font-size:11px !important}
 [style*="font-size:10px"]{font-size:11.5px !important}
 [style*="font-size:11px"]{font-size:12px !important}
+
+/* ==========================================================================
+   角色抽卡 & 稀有度 & 信任血条
+   ========================================================================== */
+.rarity{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.12em;
+  padding:1px 7px;box-shadow:inset 0 0 0 2px var(--ink);vertical-align:middle}
+.rarity.ssr{background:linear-gradient(90deg,#e9b23c,#f5d67a,#e9b23c);color:var(--ink)}
+.rarity.sr{background:#7fa8dd;color:#fff}
+.rarity.r{background:#cfc4b6;color:var(--ink)}
+.hpbar{height:12px;background:var(--cream2);box-shadow:inset 0 0 0 2px var(--ink);padding:2px;position:relative}
+.hpbar>i{display:block;height:100%;
+  background-image:repeating-linear-gradient(90deg,transparent 0 5px,rgba(63,43,35,.25) 5px 6px)}
+.hpbar>i.hi{background-color:#57bfb4}
+.hpbar>i.mid{background-color:#e9b23c}
+.hpbar>i.lo{background-color:#e8535a}
+.gacha-stage{min-height:250px;display:grid;place-items:center;padding:12px;
+  background:#241a2e;box-shadow:inset 0 0 0 3px var(--ink);position:relative;overflow:hidden}
+.gacha-card{width:180px;height:220px;background:var(--cream);box-shadow:inset 0 0 0 4px var(--ink);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  clip-path:var(--notch)}
+.gacha-card.back{background:#3a2e4a;color:var(--cream)}
+.gacha-card.back .q{font-size:52px;font-weight:700;color:var(--mustard);
+  animation:blinkq 0.8s steps(2) infinite}
+.gacha-shake{animation:gachaShake .5s steps(6)}
+@keyframes gachaShake{0%{transform:translate(0)}20%{transform:translate(-7px,3px) rotate(-3deg)}
+  40%{transform:translate(6px,-4px) rotate(2deg)}60%{transform:translate(-5px,-3px) rotate(-2deg)}
+  80%{transform:translate(4px,3px) rotate(2deg)}100%{transform:translate(0)}}
+.gacha-burst{position:absolute;inset:0;pointer-events:none;
+  animation:burstFlash .6s steps(3) forwards}
+.gacha-burst.ssr{background:radial-gradient(circle,rgba(233,178,60,.85) 0%,transparent 65%)}
+.gacha-burst.sr{background:radial-gradient(circle,rgba(127,168,221,.75) 0%,transparent 60%)}
+.gacha-burst.r{background:radial-gradient(circle,rgba(207,196,182,.5) 0%,transparent 55%)}
+@keyframes burstFlash{0%{opacity:1}100%{opacity:0}}
+.gacha-card.tier-ssr{box-shadow:inset 0 0 0 4px var(--ink), inset 0 0 0 8px #e9b23c}
+.gacha-card.tier-sr{box-shadow:inset 0 0 0 4px var(--ink), inset 0 0 0 8px #7fa8dd}
