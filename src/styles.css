@@ -592,3 +592,8 @@ body{
   font-size:11px;color:var(--dim);cursor:help;opacity:.5;vertical-align:middle;
   border-radius:50%;box-shadow:inset 0 0 0 1px var(--dim)}
 .info-dot:hover{opacity:1;color:var(--coral);box-shadow:inset 0 0 0 1px var(--coral)}
+
+/* 研究台流水线横滑条明显一点 */
+#kanban::-webkit-scrollbar{height:10px}
+#kanban::-webkit-scrollbar-track{background:var(--cream2);box-shadow:inset 0 0 0 2px var(--ink)}
+#kanban::-webkit-scrollbar-thumb{background:var(--teal);box-shadow:inset 0 0 0 2px var(--ink)}

@@ -93,9 +93,10 @@ RENDER.research = function(){
       <h1>研究台 · THE DESK OF THE BOSS</h1>
       <span class="sub">灵感 ▸ 初筛 ▸ 快研 ▸ 深研 ▸ 决策 ▸ 跟踪 —— 你只出题和拍板，中间是 AI 员工的事</span>
     </div>
-    <div style="display:grid;grid-template-columns:290px minmax(0,1fr) 280px;gap:12px;align-items:start">
-      ${win('灵感流', '<div id="ideaFeed" style="max-height:74vh;overflow-y:auto"></div>', {color:'mustard', sub:'今天世界在聊什么'})}
-      ${win('流水线', '<div id="kanban" style="overflow-x:auto"></div>', {color:'teal', sub:'点票卡进工作台 · 金框=完整样例 · 可横滑'})}
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:stretch">
+      ${win('灵感流', '<div id="ideaFeed" style="height:70vh;overflow-y:auto"></div>', {color:'mustard', sub:'今天世界在聊什么'})}
+      ${win('流水线', '<div id="kanban" style="height:calc(70vh - 18px);overflow:auto"></div>' +
+        '<div class="t-xs t-dim" style="font-weight:700;text-align:center;padding-top:3px">← 左右滑动看完整漏斗 →</div>', {color:'teal', sub:'点票卡进工作台 · 金框=完整样例 · 可横滑'})}
       ${win('投稿箱', `
           <div class="field"><label>类型</label>
             <div class="opts" id="subType">
@@ -109,8 +110,11 @@ RENDER.research = function(){
               ${DATA.researchers.filter(r=>!r.veto).map((r,i)=>
                 `<div class="opt ${i<2?'on':''}" data-v="${r.id}">${r.n}</div>`).join('')}
             </div></div>
-          <button class="px-btn on dotted" id="subGo" style="width:100%;margin-top:6px">▸ 投进流水线</button>`,
-          {color:'pink', sub:'老板的小道消息也是生产资料'})}
+          <button class="px-btn on dotted" id="subGo" style="width:100%;margin-top:6px">▸ 投进流水线</button>
+          <div class="t-xs t-dim" style="font-weight:700;line-height:1.7;margin-top:10px">
+            小道消息、待验证观点、看到的好报告，都能丢进来。<br>
+            系统会开一张「交叉验证」票，派给你选的研究员去核。</div>`,
+          {color:'pink', sub:'老板的小道消息也是生产资料', bodyStyle:'height:70vh;overflow-y:auto'})}
     </div>`;
   if(typeof renderInsightFeed === 'function') renderInsightFeed($('#ideaFeed'));
   else drawIdeas();
@@ -167,7 +171,7 @@ function bindSubmit(){
 function drawKanban(){
   const kb = $('#kanban'); if(!kb) return;
   kb.innerHTML = '';
-  kb.style.cssText = 'display:grid;grid-template-columns:repeat(6,minmax(122px,1fr));gap:8px;min-width:760px';
+  kb.style.cssText = 'display:grid;grid-template-columns:repeat(6,minmax(104px,1fr));gap:6px;min-width:650px';
   STAGES.forEach((st, si)=>{
     const col = el('div');
     col.innerHTML = `<div class="cap" style="border-bottom:3px solid var(--ink);padding-bottom:3px;margin-bottom:7px">
