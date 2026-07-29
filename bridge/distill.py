@@ -126,10 +126,12 @@ def _insight_compute(n=2):
         from concurrent.futures import ThreadPoolExecutor
         jobs = {"aihot": lambda: realtime.aihot_today(2),
                 "poly": lambda: realtime.polymarket_hot(2),
-                "tmt": lambda: realtime.tmtbreakout_today(2)}
-        with ThreadPoolExecutor(max_workers=3) as ex:
+                "tmt": lambda: realtime.tmtbreakout_today(2),
+                "sub": lambda: realtime.substack_configured(2),
+                "reddit": lambda: realtime.reddit_hot(2)}
+        with ThreadPoolExecutor(max_workers=5) as ex:
             futs = {k: ex.submit(f) for k, f in jobs.items()}
-            for k in ["aihot", "poly", "tmt"]:
+            for k in ["aihot", "poly", "tmt", "sub", "reddit"]:
                 try:
                     r = futs[k].result(timeout=10)
                     if r.get("ok"): out["items"] += r["items"]

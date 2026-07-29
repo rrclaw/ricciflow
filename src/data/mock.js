@@ -36,7 +36,7 @@ DATA.sources = [
   {id:'semianalysis',n:'SemiAnalysis',       g:'sub',   t:'邮件订阅',  freq:'周更',     conf:4, fresh:5,  today:1,    auth:'Cookie', bucket:'research_assets', on:true,  note:'算力/半导体海外一手。只做内部校准，不当外发依据。'},
   {id:'zsxq',       n:'知识星球',            g:'sub',   t:'HTTP',     freq:'日更',     conf:2, fresh:1,  today:18,   auth:'Cookie', bucket:'personal_assets', on:false, note:'噪声极高。默认灰点，需二次交叉才入库。'},
   {id:'trendforce', n:'TrendForce',          g:'sub',   t:'采集器',    freq:'周更',     conf:4, fresh:4,  today:2,    auth:'无', bucket:'research_assets', on:true,  note:'存储/面板/功率器件价格。供需账本上游。'},
-  {id:'substack',   n:'Substack 精选',       g:'sub',   t:'RSS',      freq:'日更',     conf:2, fresh:2,  today:11,   auth:'RSS URL', bucket:'personal_assets', on:false, note:'观点类。任意 substack 填 RSS 即可抓，默认不入 KB。'},
+  {id:'substack',   n:'Substack 精选',       g:'sub',   t:'RSS',      freq:'日更',     conf:3, fresh:0,  today:8,    auth:'RSS URL', bucket:'research_assets', on:true, live:true, note:'投研 substack RSS。已预置 TMT Breakout / Doomberg / Bear Cave / MBI 四个，可增删。灵感流实时源。'},
   /* ─── 实时热点源（灵感流 realtime，真接 kb-bridge）─── */
   {id:'aihot',      n:'AI HOT 日报',         g:'sub',   t:'REST',     freq:'每日08:00', conf:3, fresh:0,  today:50,   auth:'无', bucket:'research_assets', on:true,  live:true, note:'aihot.virxact.com 今日 AI 动态 LLM 精选。灵感流实时源，真接通。'},
   {id:'polymarket', n:'Polymarket',          g:'sub',   t:'Gamma API', freq:'实时',      conf:3, fresh:0,  today:12,   auth:'无', bucket:'research_assets', on:true,  live:true, note:'预测市场 24h 成交榜。真金白银在赌什么=宏观/事件领先指标。灵感流实时源。'},

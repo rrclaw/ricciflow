@@ -243,7 +243,7 @@ def substack_configured(n=3):
     out = []
     for u in urls[:3]:
         try:
-            for t in _rss_titles(u)[:2]:
+            for t in [x for x in _rss_titles(u) if not _is_skippable(x)][:2]:
                 out.append({"theme": _lead_entity(t), "topic": t[:56], "heat": 1, "fresh": True,
                     "src": "substack", "method": f"来自 {u}"})
                 if len(out) >= n: return {"ok": True, "items": out}

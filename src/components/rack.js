@@ -243,7 +243,9 @@ function openSourceDrawer(id){
 }
 
 /* 需要填 key/URL 的源，给真实输入框（存本机 + 同步桥） */
-function srcCfg(id){ return JSON.parse(localStorage.getItem('rf_src_'+id) || '{}'); }
+const SRC_DEFAULTS = {substack: {urls:[
+  'https://doomberg.substack.com/feed','https://www.bearcave.com/feed','https://mostlyborrowedideas.substack.com/feed']}};
+function srcCfg(id){ return JSON.parse(localStorage.getItem('rf_src_'+id) || 'null') || SRC_DEFAULTS[id] || {}; }
 function sourceConfigHTML(s){
   const c = srcCfg(s.id);
   if(s.id === 'substack'){
