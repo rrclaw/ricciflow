@@ -185,6 +185,70 @@ ISO_STYLES.pearl = function(ctx, b){
   return {At:[cx - 30, cy - 240], Bt:[cx + 30, cy - 240], Ct:[cx + 30, cy - 240], Dt:[cx - 30, cy - 240]};
 };
 
+/* 自由女神像（华尔街地标） */
+ISO_STYLES.liberty = function(ctx, b){
+  const base = isoPt(b.ix + 1, b.iy + 1);
+  const cx = base[0], cy = base[1];
+  // 基座（梯形石台）
+  ctx.fillStyle = 'rgba(30,25,20,.18)'; ctx.fillRect(cx - 26, cy - 4, 52, 8);
+  ctx.fillStyle = '#8a8172'; poly(ctx, [[cx-24,cy],[cx+24,cy],[cx+18,cy-30],[cx-18,cy-30]], '#9a9182', W_PAL.ink);
+  ctx.fillStyle = '#7a7264'; poly(ctx, [[cx-18,cy-30],[cx+18,cy-30],[cx+13,cy-52],[cx-13,cy-52]], '#8a8274', W_PAL.ink);
+  // 女神身体（铜绿长袍）
+  const ny = cy - 52;
+  ctx.fillStyle = '#5fa88f';
+  poly(ctx, [[cx-13,ny],[cx+13,ny],[cx+8,ny-58],[cx-8,ny-58]], '#5fa88f', W_PAL.ink); // 袍
+  ctx.fillStyle = '#6fb89f';
+  ctx.fillRect(cx-9, ny-58, 18, 20);        // 上身
+  // 头
+  ctx.fillStyle = '#7fc4ab'; ctx.beginPath(); ctx.arc(cx, ny-64, 7, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = W_PAL.ink; ctx.lineWidth = 2; ctx.stroke();
+  // 皇冠尖刺
+  ctx.fillStyle = '#7fc4ab';
+  for(let i=-3;i<=3;i++){ ctx.fillRect(cx+i*3-1, ny-76, 2, 6); }
+  // 举火炬的右臂
+  ctx.strokeStyle = '#5fa88f'; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.moveTo(cx+7, ny-52); ctx.lineTo(cx+20, ny-84); ctx.stroke();
+  ctx.fillStyle = '#e9b23c'; ctx.beginPath(); ctx.arc(cx+22, ny-90, 6, 0, Math.PI*2); ctx.fill(); // 火炬
+  ctx.fillStyle = '#f2d67a'; ctx.beginPath(); ctx.arc(cx+22, ny-92, 3, 0, Math.PI*2); ctx.fill();
+  // 左臂抱书板
+  ctx.fillStyle = '#4f9880'; ctx.fillRect(cx-16, ny-40, 12, 16);
+  ctx.strokeStyle = W_PAL.ink; ctx.lineWidth = 2; ctx.strokeRect(cx-16, ny-40, 12, 16);
+  ctx.lineWidth = 2;
+  return {At:[cx-24,ny-96], Bt:[cx+24,ny-96], Ct:[cx+24,ny-96], Dt:[cx-24,ny-96]};
+};
+
+/* 金紫荆 + 会展中心飞翼顶（香港中环地标） */
+ISO_STYLES.bauhinia = function(ctx, b){
+  const base = isoPt(b.ix + 1, b.iy + 1);
+  const cx = base[0], cy = base[1];
+  // 会展中心（飞翼弧顶）
+  ctx.fillStyle = 'rgba(30,25,20,.18)'; ctx.fillRect(cx - 40, cy - 2, 80, 8);
+  ctx.fillStyle = '#c9c4bc';
+  poly(ctx, [[cx-42,cy],[cx+42,cy],[cx+30,cy-26],[cx-30,cy-26]], '#d4cfc6', W_PAL.ink); // 台基
+  // 飞翼屋顶（两片弧）
+  ctx.fillStyle = '#8fa6bc';
+  ctx.beginPath(); ctx.moveTo(cx-30,cy-26); ctx.quadraticCurveTo(cx-14,cy-52,cx+2,cy-40);
+  ctx.lineTo(cx+2,cy-30); ctx.lineTo(cx-30,cy-24); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = W_PAL.ink; ctx.stroke();
+  ctx.fillStyle = '#a0b6ca';
+  ctx.beginPath(); ctx.moveTo(cx+30,cy-26); ctx.quadraticCurveTo(cx+14,cy-52,cx-2,cy-40);
+  ctx.lineTo(cx-2,cy-30); ctx.lineTo(cx+30,cy-24); ctx.closePath(); ctx.fill();
+  ctx.stroke();
+  // 金紫荆雕塑（金花 + 柱）
+  const fy = cy - 26;
+  ctx.fillStyle = '#8a8172'; ctx.fillRect(cx-3, fy-30, 6, 30);   // 花柱
+  ctx.strokeRect(cx-3, fy-30, 6, 30);
+  ctx.fillStyle = '#e9b23c';                                     // 五瓣金花
+  for(let i=0;i<5;i++){
+    const a = -Math.PI/2 + i*Math.PI*2/5;
+    const px = cx + Math.cos(a)*11, py = fy-38 + Math.sin(a)*11;
+    ctx.beginPath(); ctx.ellipse(px, py, 6, 4, a, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = W_PAL.ink; ctx.stroke();
+  }
+  ctx.fillStyle = '#f2d67a'; ctx.beginPath(); ctx.arc(cx, fy-38, 4, 0, Math.PI*2); ctx.fill();
+  return {At:[cx-42,fy-56], Bt:[cx+42,fy-56], Ct:[cx+42,fy-56], Dt:[cx-42,fy-56]};
+};
+
 /* 华尔街铜牛（小雕塑） */
 function paintBull(ctx, ix, iy){
   const p = isoPt(ix, iy);
@@ -294,6 +358,7 @@ const CITY = {
     {isl:'wallst', id:'beacon', n:'灯塔资产', ix:9.0, iy:5.8, style:'tower', h:170, c:'#8ab0c9', sign:['BEACON'],
      label:'灯塔资产 · 派研究员调研', use:()=> dispatchAbroad('灯塔资产')},
     {isl:'wallst', id:'fed', n:'联储金库', ix:1.4, iy:6.2, style:'tower', h:60, c:'#b0a898', sign:['FED VAULT']},
+    {isl:'wallst', id:'liberty', n:'自由女神像', ix:9.6, iy:1.2, style:'liberty', sign:['LIBERTY 自由女神']},
     {isl:'wallst', id:'mediahub', n:'环球媒体大厦', ix:5.2, iy:6.0, style:'tower', h:118, c:'#c98a5a',
      sign:['环球媒体·新闻库'], label:'媒体大楼 · 新闻公告库', use:()=> openBuildingBrowser('media')},
     /* —— 中环 —— */
@@ -302,7 +367,8 @@ const CITY = {
     {isl:'central', id:'vic', n:'维多利亚港湾基金', ix:5.0, iy:2.4, style:'tower', h:110, c:'#7d9c8a',
      sign:['V.HARBOUR'], label:'维港基金 · 派研究员调研', use:()=> dispatchAbroad('维多利亚港湾基金')},
     {isl:'central', id:'hsbc', n:'狮子银行', ix:8.0, iy:2.6, style:'tower', h:132, c:'#a4756b', sign:['LION BANK']},
-    {isl:'central', id:'exchsq', n:'交易广场', ix:4.8, iy:5.4, style:'tower', h:88, c:'#9aa7b8', sign:['EXCHANGE SQ']}
+    {isl:'central', id:'exchsq', n:'交易广场', ix:4.8, iy:5.4, style:'tower', h:88, c:'#9aa7b8', sign:['EXCHANGE SQ']},
+    {isl:'central', id:'bauhinia', n:'金紫荆·会展中心', ix:1.4, iy:5.6, style:'bauhinia', sign:['金紫荆广场']}
   ],
   /* 岛间跳转直升机坪 */
   pads: [
