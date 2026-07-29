@@ -48,23 +48,24 @@ body { background: #1c140e; }   /* 世界层底色：深木色，替代 V1 蓝�
   border: 0; box-shadow: inset 0 0 0 3px var(--ink);
 }
 .hud-item {
-  position: relative; width: 44px; height: 44px;
+  position: relative; min-width: 62px; height: 46px;
   background: var(--cream);
   box-shadow: inset 0 0 0 3px var(--ink);
   clip-path: var(--notch-sm);
-  display: grid; place-items: center;
-  font-size: 15px; font-weight: 700; color: var(--ink);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1px; padding: 3px 8px 4px;
+  font-weight: 700; color: var(--ink);
   cursor: pointer;
 }
+.hud-item .ico { font-size: 14px; line-height: 1; }
+.hud-item .name { font-size: 9px; letter-spacing: .06em; line-height: 1; white-space: nowrap; }
+.hud-item .hint { position: absolute; bottom: 52px; left: 50%; transform: translateX(-50%);
+  background: var(--ink); color: var(--cream);
+  padding: 2px 7px; font-size: 10px; white-space: nowrap; display: none; }
+.hud-item:hover .hint { display: block; }
 .hud-item:hover { background: var(--mustard); }
 .hud-item.locked { background: #8a7c6b; color: #55493c; }
 .hud-item.off { display: none; }
-.hud-item .lbl {
-  position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
-  background: var(--ink); color: var(--cream);
-  padding: 2px 7px; font-size: 10px; white-space: nowrap; display: none;
-}
-.hud-item:hover .lbl { display: block; }
 
 /* ---------- 组件面板（大抽屉） ---------- */
 .panel-scrim {

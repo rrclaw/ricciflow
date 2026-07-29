@@ -81,21 +81,28 @@ if(typeof toast !== 'function'){
   };
 }
 
-/* ---------- HUD ---------- */
+/* ---------- HUD：图标 + 全称常显，悬停出一句话说明 ---------- */
+const HUD_HINTS = {
+  research:'流水线看板 · 灵感到跟踪', rack:'数据接口机架', atlas:'知识图谱与缺口',
+  desk:'研究员名册与考核', scenes:'晨会/反路演/饭局/调研', trading:'持仓·原则闸·拦截',
+  daily:'等你拍板的事', settings:'配色·LLM·装修·红线'
+};
 function drawHUD(){
   const hud = $('#hud');
   hud.innerHTML = '';
   COMPONENTS.forEach(c=>{
-    const b = el('button','hud-item' + (c.enabled ? '' : ' off'), c.icon +
-      `<span class="lbl">${c.n}</span>`);
+    const b = el('button','hud-item' + (c.enabled ? '' : ' off'),
+      `<span class="ico">${c.icon}</span><span class="name">${c.n}</span>
+       <span class="hint">${HUD_HINTS[c.id] || ''}</span>`);
     b.dataset.hud = c.id;
     b.onclick = ()=> openComponent(c.id);
     hud.appendChild(b);
   });
   /* 大地图入口：在办公室时锁定 */
   const locked = GAME.location === 'office';
-  const m = el('button','hud-item' + (locked ? ' locked' : ''), '图' +
-    `<span class="lbl">${locked ? '走出办公室才能出门' : '世界地图'}</span>`);
+  const m = el('button','hud-item' + (locked ? ' locked' : ''),
+    `<span class="ico">✈</span><span class="name">世界地图</span>
+     <span class="hint">${locked ? '走大门出去才解锁' : '三个金融圈隔海相望'}</span>`);
   m.dataset.hud = 'map';
   m.onclick = ()=>{
     if(GAME.location === 'office') toast('老板，出门要走大门。楼下才有世界。');
