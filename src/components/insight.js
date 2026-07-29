@@ -9,7 +9,7 @@ async function insightFetch(force){
   const now = Date.now();
   if(INSIGHT_CACHE && !force && now - INSIGHT_AT < 6 * 3600 * 1000) return INSIGHT_CACHE;
   try {
-    const r = await fetch(BRIDGE + '/api/insight?n=3', {signal: AbortSignal.timeout(6000)});
+    const r = await fetch(BRIDGE + '/api/insight?n=3', {signal: AbortSignal.timeout(13000)});
     const j = await r.json();
     if(j.ok && j.items && j.items.length){
       INSIGHT_CACHE = {live:true, ...j}; INSIGHT_AT = now;
@@ -45,6 +45,7 @@ async function renderInsightFeed(mount){
           ${infoDot(it.method || '')}
         </div>
         ${it.topic?`<div class="why" style="color:var(--dim)">引子：${it.topic}</div>`:''}
+        ${it.src?`<div class="t-xs" style="color:var(--dim);font-weight:700;margin-top:2px">源：${it.src}${it.vol?' · $'+it.vol+'M':''}</div>`:''}
         <div class="row" style="gap:4px;margin-top:4px">
           <button class="px-btn sm" data-ins-go="${it.theme}">▸ 立课题</button>
           <button class="px-btn sm ghost" data-ins-ask="${it.theme}">? 怎么问</button>

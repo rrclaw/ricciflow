@@ -114,7 +114,7 @@ async def main():
 
         # ---------- V1 迁移断言 ----------
         await page.click('[data-hud="rack"]'); await page.wait_for_timeout(500)
-        check(await page.eval_on_selector_all(".cart", "e=>e.length") == 16, "数据源卡带 == 16")
+        check(await page.eval_on_selector_all(".cart", "e=>e.length") >= 22, "数据源卡带 >= 22")
         await page.click("#panelClose")
         await page.click('[data-hud="atlas"]'); await page.wait_for_timeout(700)
         check(await page.eval_on_selector_all(".plot", "e=>e.length") >= 60, "atlas 节点 >= 60")

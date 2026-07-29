@@ -13,6 +13,10 @@ KB = os.path.join(HOME, "knowledge", "knowledge")
 SA = os.path.join(HOME, "search_alpha")
 HERE = os.path.dirname(os.path.abspath(__file__))
 INQ_INDEX = os.path.join(HERE, "inquiry_index.json")
+try:
+    import realtime
+except Exception:
+    realtime = None
 
 # ============================================================
 # INSIGHT — 每天 3 个刚萌芽的市场热点
@@ -68,7 +72,17 @@ def _panel_hook(kw):
         return re.sub(r"^[^｜|]+[｜|]\s*", "", t)[:40]   # 去掉"某研究｜"前缀
     return ""
 
-def insight_daily(n=3):
+_insight_cache = {"at": 0, "data": None}
+def insight_daily(n=2):
+    import time as _t
+    if _insight_cache["data"] and _t.time() - _insight_cache["at"] < 1800:
+        return _insight_cache["data"]
+    r = _insight_compute(n)
+    if r.get("ok"):
+        _insight_cache["data"] = r; _insight_cache["at"] = _t.time()
+    return r
+
+def _insight_compute(n=2):
     """机构搜索关键词周环比 → 本周涨最快/新起的热点（真·近期萌芽）"""
     out = {"generated_at": datetime.now().isoformat(timespec="seconds"), "items": []}
     csvs = _latest_keyword_csvs()
@@ -101,12 +115,27 @@ def insight_daily(n=3):
         out["items"].append({
             "theme": k, "count": v, "prev": p, "delta": delta,
             "ratio": round(ratio, 1), "fresh": fresh, "heat": heat,
-            "topic": _panel_hook(k), "as_of": cur_date,
+            "topic": _panel_hook(k), "as_of": cur_date, "src": "机构热搜·周环比",
             "method": (f"「{k}」本周机构搜索 {v} 次，上周 {p} 次，"
                        + ("本周凭空新起" if fresh else f"环比涨 {ratio:.1f} 倍（+{delta}）")
                        + f"。数据={cur_date} 机构搜索关键词周环比。"),
         })
+    # 机构榜取 n；再各融 aihot / polymarket，让灵感流有真·今日源
+    out["items"] = out["items"][:n]
+    if realtime:
+        from concurrent.futures import ThreadPoolExecutor
+        jobs = {"aihot": lambda: realtime.aihot_today(2),
+                "poly": lambda: realtime.polymarket_hot(2),
+                "tmt": lambda: realtime.tmtbreakout_today(2)}
+        with ThreadPoolExecutor(max_workers=3) as ex:
+            futs = {k: ex.submit(f) for k, f in jobs.items()}
+            for k in ["aihot", "poly", "tmt"]:
+                try:
+                    r = futs[k].result(timeout=10)
+                    if r.get("ok"): out["items"] += r["items"]
+                except Exception: pass
     out["ok"] = True
+    out["source"] = "机构周环比 + aihot + polymarket + TMT Breakout"
     return out
 
 def _insight_why(theme, r, smart):

@@ -128,7 +128,7 @@ function makeCart(s){
   c.innerHTML = `
       <div class="cart-top">
         <div>
-          <div class="nm">${s.n} ${s.locked?'<span class="tag rose">LOCK</span>':''}</div>
+          <div class="nm">${s.n} ${s.locked?'<span class="tag rose">LOCK</span>':''}${s.live?'<span class="tag cyan">🟢实时</span>':''}${s.auth&&s.auth.includes('待接入')||s.t==='待接入'?'<span class="tag">待接入</span>':''}</div>
           <div class="t-xs t-dim">${s.t} · ${s.freq}</div>
         </div>
         <i class="led"></i>

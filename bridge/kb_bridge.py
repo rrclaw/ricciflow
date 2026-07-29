@@ -176,6 +176,12 @@ class H(http.server.BaseHTTPRequestHandler):
         if u.path == "/api/health":
             return self._send(200, {"ok": True, "docs": len(DOCS), "auth": self._auth(),
                                     "distill": distill is not None})
+        if u.path == "/api/realtime_probe":
+            try:
+                import realtime
+                return self._send(200, {"ok": True, **realtime.realtime_probe()})
+            except Exception as e:
+                return self._send(200, {"ok": False, "error": str(e)})
         if u.path == "/api/insight":
             # 灵感流：公司门面，客人也能看（真实 search_alpha 新兴主题）
             if not distill: return self._send(200, {"ok": False, "error": "distill 未就绪"})
@@ -250,8 +256,17 @@ class H(http.server.BaseHTTPRequestHandler):
             return self._send(200, {"ok": True, "row": row})
         self._send(404, {"error": "not found"})
 
+def _warm():
+    try:
+        if distill: distill.insight_daily()
+        print("[warm] insight 缓存已预热")
+    except Exception as e:
+        print("[warm] 预热失败:", e)
+
 if __name__ == "__main__":
     DOCS = load()
+    import threading
+    threading.Thread(target=_warm, daemon=True).start()
     inv = {}
     for d in DOCS.values(): inv[d["building"]] = inv.get(d["building"], 0) + 1
     print(f"kb-bridge 就绪 · 共 {len(DOCS)} 份文档 · 楼宇库存: {inv}")
