@@ -1,10 +1,14 @@
-# 里奇流资本 · Ricci Flow Capital
+# ricciflow · 里奇流资本（私募基金模拟器）
 
-> 像素风买方基金模拟经营游戏 × AI 原生投研工作台。
-> A pixel-art buy-side fund simulation game that doubles as an AI-native investment research workbench.
+> 像素私募基金模拟经营游戏 × AI 原生投研工作台。
+> A pixel-art buy-side fund simulator that doubles as an AI-native investment research workbench.
 > **Slogan：曲率即命运。**（Ricci flow：佩雷尔曼证庞加莱猜想用的曲率演化方程；里奇 = Rich，流 = Flow。）
 
 ![status](https://img.shields.io/badge/status-playable_demo-e9b23c) ![license](https://img.shields.io/badge/license-MIT-57bfb4) ![build](https://img.shields.io/badge/build-zero-e8535a)
+
+**🎮 在线试玩：<https://ricciflow.playbookex.com>**
+
+![里奇流资本](assets/og.png)
 
 ---
 
@@ -88,6 +92,24 @@ python3.11 gate.py    # 需要 playwright (pip install playwright && playwright 
 ```
 
 覆盖：三层世界走动与跳转、8 组件全深链路、跨组件联动（沉淀→金旗、投稿→收件箱、调研→日报）、4 个场景跑通、挖角双向、主题切换、通知、PWA。
+
+## 截图
+
+| 老板办公室（可走动，家具=组件） | 世界地图（等距三岛 · 真实地理映射） |
+|---|---|
+| ![office](docs/shots/office.png) | ![worldmap](docs/shots/worldmap.png) |
+
+| 深研工作台（对话+追问链+缺料+沉淀） | 交易台（原则闸 · 上头拦截剧场） |
+|---|---|
+| ![research](docs/shots/research.png) | ![trading](docs/shots/trading.png) |
+
+| 角色抽卡（SSR/SR/R · 信任血条） | 研究员个人看板（灵魂文件 · 买卖时间轴） |
+|---|---|
+| ![gacha](docs/shots/gacha.png) | ![personal](docs/shots/personal.png) |
+
+| 商K 内景（沙发/歌词屏/迪斯科） | 饭店内景（圆桌转盘 · 隐藏菜「排产表」） |
+|---|---|
+| ![ktv](docs/shots/ktv.png) | ![restaurant](docs/shots/restaurant.png) |
 
 ## License
 
