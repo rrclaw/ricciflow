@@ -3,9 +3,31 @@
 
    替换的是数据，不是界面：名册卡、个人看板、财务处的渲染代码原样复用，
    只是数据源从 mock.js 换成 kb-bridge 的 /api/roster 与 /api/finance。
-   没有钥匙（公网访客）时保持 mock，并且卡上仍旧挂「编造值」角标。 */
+   没有钥匙的访客走**公开层**：wiki 图谱、信源分布、名册身份与公开信条都是真的，
+   只有持仓/净值/薪资/原文上锁。整站不留一个写死的假数字。 */
 
-const REAL = {on:false, roster:null, finance:null, err:'', loading:false};
+const REAL = {on:false, roster:null, finance:null, err:'', loading:false,
+              pub:false, pubErr:''};
+
+/* 公开层：不需要钥匙也能拿到的真实数据。开局就拉，拉到什么算什么。
+   拉不到（桥没跑）就让组件显示「桥未运行」，绝不回落到写死的假数据。 */
+async function loadPublic(){
+  try{
+    const [w, s, r] = await Promise.all([
+      fetch(BRIDGE + '/api/wiki', {signal:AbortSignal.timeout(20000)}).then(x=>x.json()),
+      fetch(BRIDGE + '/api/srcreg', {signal:AbortSignal.timeout(20000)}).then(x=>x.json()),
+      fetch(BRIDGE + '/api/roster_public', {signal:AbortSignal.timeout(20000)}).then(x=>x.json())
+    ]);
+    if(w && w.pages){ REAL.kb = w; applyRealAtlas(w); }
+    if(s && s.ok) REAL.srcreg = s;
+    if(r && r.researchers) applyRealRoster(r);
+    REAL.pub = !!(w && w.pages);
+    REAL.pubErr = REAL.pub ? '' : '桥没返回 wiki';
+  }catch(e){
+    REAL.pub = false; REAL.pubErr = String(e.message || e);
+  }
+  return REAL.pub;
+}
 
 /* 真实策略 → 画面里已有的像素小人。按市场/风格挑一个像的，纯外观。 */
 const REAL_SPRITE = {
@@ -49,6 +71,7 @@ async function loadReal(force){
 
 /* 把真名册灌进 DATA.researchers —— 保持既有字段形状，界面代码不用改。 */
 function applyRealRoster(ros){
+  const pub = !!(ros.researchers[0] && ros.researchers[0].public);
   DATA.researchers = ros.researchers.map(r=>{
     const eq = r.equity || {}, c = r.closed || {};
     const hitPct = c.hit_rate != null ? Math.round(c.hit_rate * 100)
@@ -57,8 +80,8 @@ function applyRealRoster(ros){
       id:r.id, sp:REAL_SPRITE[r.id] || 'guest', n:r.n,
       proto:r.market + ' · ' + r.style,
       /* 等级 = 真实产出厚度：平仓笔数 + 在册天数，不是拍的 */
-      lv: Math.max(1, Math.min(99, Math.round((c.n || 0) / 2 + (eq.n_days || 0) / 6))),
-      xp: r.hp,
+      lv: pub ? null : Math.max(1, Math.min(99, Math.round((c.n || 0) / 2 + (eq.n_days || 0) / 6))),
+      xp: r.hp ?? null,
       adopt: eq.total_return_pct != null ? Math.round(eq.total_return_pct) : null,
       hit: hitPct, mdd: eq.max_drawdown_pct != null ? Math.round(eq.max_drawdown_pct) : null,
       love: Math.max(0, Math.min(5, Math.round(r.hp / 20))),
@@ -68,7 +91,7 @@ function applyRealRoster(ros){
       motto:r.motto,
       say:{hi:r.motto, mid:r.motto, lo:r.motto},
       gone: r.status.code === 'fired',
-      real: r
+      pub, real: r
     };
   });
   DATA.reviews = {};
@@ -125,7 +148,9 @@ function realStatusHTML(r){
 }
 /* 信任度血条 —— 数值由 real.py 的公式算出，鼠标悬停能看到扣分理由 */
 function realHpHTML(r){
-  const hp = r.real ? r.real.hp : null; if(hp == null) return '';
+  const hp = r.real ? r.real.hp : null;
+  if(hp == null) return r.real && r.real.public
+    ? '<div class="t-xs t-dim" style="font-weight:700;margin:5px 0 2px">🔒 信任度需要钥匙</div>' : '';
   const col = hp >= 70 ? 'var(--teal)' : hp >= 40 ? 'var(--mustard)' : 'var(--coral)';
   return `<div class="row" style="gap:5px;margin:5px 0 2px">
       <span class="cap" style="min-width:34px">信任</span>
@@ -136,6 +161,11 @@ function realHpHTML(r){
 /* 战绩三格 —— 有账本报账本，没账本就写「无账本」，不拿别人的数字凑 */
 function realStat3(r){
   const R = r.real, eq = R.equity || {}, c = R.closed || {};
+  if(R.public){
+    return `<div class="stat3"><div style="grid-column:1/-1">
+      <div class="k">战绩</div>
+      <div class="v t-dim" style="font-size:12px">🔒 净值与平仓统计需要老板钥匙</div></div></div>`;
+  }
   const pct = v=> v == null ? '—' : (v > 0 ? '+' : '') + (+v).toFixed(1) + '%';
   const cls = v=> v == null ? '' : v >= 0 ? 't-cyan' : 't-rose';
   if(R.status.code === 'nobook'){
@@ -154,6 +184,7 @@ function realStat3(r){
 }
 /* 数据出处角标：告诉你这三个数是从哪个账本读出来的 */
 function realStatSrc(r){
+  if(r.real.public) return '<span class="tag" title="公开层：只有身份与公开信条">公开层</span>';
   const c = r.real.closed || {};
   const txt = c.n ? `${c.n} 笔平仓（_PLATFORM/ledger）+ playbookex 净值`
                   : 'playbookex 净值口径，尚无已平仓回合';
@@ -163,6 +194,13 @@ function realStatSrc(r){
 /* 名册卡下半段：真实考核块。替换掉那套编造的 #排名/纪律分。 */
 function realReviewBlock(r){
   const R = r.real, s = R.status, eq = R.equity || {};
+  if(R.public) return `
+    <div style="border-top:3px dashed var(--ink);margin-top:8px;padding-top:7px">
+      <div class="row" style="gap:4px"><span class="cap">状态</span>
+        <span class="tag ${REAL_STATUS_TAG[s.code] || ''}">${s.label}</span>
+        <span class="sp"></span>
+        <span class="t-xs t-dim" style="font-weight:700">🔒 战绩与产出需要钥匙</span></div>
+    </div>`;
   const why = String(s.why || '').replace(/"/g, '&quot;');
   const ser = (eq.series || []).map(p=> p.nav * 100);
   return `
@@ -186,6 +224,8 @@ function realReviewBlock(r){
 
 /* 「最近一期怎么说」= 真实 picks 的理由原文，没开仓就说没开仓 */
 function realSayHTML(r){
+  if(r.real.public) return `${r.real.motto}
+    <span class="t-dim" style="font-weight:400"> —— 引自 ${r.real.src}</span>`;
   const p = r.real.picks || {}, list = p.picks || [];
   if(list.length){
     const top = list[0];
@@ -264,7 +304,7 @@ function realBanner(){
     const r = REAL.roster;
     return `<span class="tag cyan" title="数据来自本机 ~/invest skills 与 rr.playbookex.com">实盘账本 · ${r.n} 名 · ${r.as_of}</span>`;
   }
-  return `<span class="demo-mark" title="${REAL.err || '插上老板钥匙后换成真实名册'}">编造值</span>`;
+  return `<span class="tag" title="身份与信条是真的；净值、平仓、薪资需要老板钥匙">公开层 · 数字已上锁</span>`;
 }
 
 /* ==========================================================================

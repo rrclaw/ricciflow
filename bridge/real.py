@@ -365,6 +365,23 @@ def hp_of(sk, st, board, eq):
     return max(0, min(cap, round(hp)))
 
 
+def roster_public():
+    """公开层名册：只给身份与公开信条，**一个数字都不给**。
+
+    可以公开：策略名、市场、风格、格言、信条、在岗状态标签。
+    绝不公开：净值、平仓统计、信任度、持仓建议、本机路径、状态理由
+    （理由里会带「最近一期 X 日」这种运营信息）。
+    """
+    board = pk_board()
+    out = []
+    for sk in ROSTER:
+        st = status_of(sk, board, {}, None)
+        out.append({k: sk[k] for k in ("id", "n", "en", "market", "style", "motto", "creed", "src", "gate")}
+                   | {"status": {"code": st["code"], "label": st["label"]}, "public": True})
+    return {"as_of": time.strftime("%Y-%m-%d"), "n": len(out), "researchers": out,
+            "note": "公开层：只有身份与公开信条。战绩、持仓、薪资需要老板钥匙。"}
+
+
 def roster(with_equity=True, with_series=False):
     board = pk_board()
     tr = trades()

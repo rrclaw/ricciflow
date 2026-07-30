@@ -46,20 +46,16 @@ function openComponent(id){
   PANEL_OPEN = id;
   $('#panelTitle').textContent = c.n + ' · ' + c.icon;
   $('#panelBar').style.background = `var(--${c.color === 'ink' ? 'ink' : c.color})`;
-  /* 页脚必须说实话：接上真账本以后就不能再自称演示数据 */
-  const real = (typeof REAL !== 'undefined' && REAL.on && ['desk','finance'].includes(id));
+  /* 页脚写「这一屏读的是哪个真实文件」，不写免责声明。
+     以前这里写死一句免责声明，是整站看起来像剧本的一大原因。 */
   $('#panelBody').innerHTML =
     `<section class="screen active" id="${SCREEN_ID[id]}"></section>
-     <div class="panel-foot">${real
-       ? `<span class="tag cyan">实盘账本</span>
-          研究员人设引自各策略 doctrine 原文，战绩来自 _PLATFORM 平仓账本与 rr.playbookex.com，
-          薪资按真实 token 消耗折算。仅本机可见。`
-       : `<span class="demo-mark">DEMO</span>
-          本页全部数据为演示用虚构数据，不代表任何真实业绩。研究员「战绩 / 命中率」为编造值。`}
-       <span class="sp"></span><span>里奇流资本 · 曲率即命运</span></div>`;
+     <div class="panel-foot">${typeof provenanceFoot === 'function'
+       ? provenanceFoot(id) : '<span>里奇流资本 · 曲率即命运</span>'}</div>`;
   $('#panel').classList.add('open');
   $('#panelScrim').classList.add('open');
   c.render();
+  if(typeof bindLockedCards === 'function') bindLockedCards();
   if(typeof walkPause === 'function') walkPause(true);
 }
 function closePanel(){
@@ -145,6 +141,33 @@ document.addEventListener('keydown', e=>{
   if(e.key === 'Enter' && !GAME.guideDone) dismissGuide();
 });
 
+/* ---------- 数据状态指示器（顶栏） ----------
+   三态：实盘已接通 / 公开层（无钥匙）/ 桥未运行。点一下开保险库。 */
+function drawDataState(){
+  const el2 = $('#tbState'); if(!el2) return;
+  const authed = (typeof REAL !== 'undefined' && REAL.on);
+  const hasKey = (typeof VAULT !== 'undefined' && !!VAULT.key);
+  let cls, txt, tip;
+  if(authed){
+    cls = 'cyan'; txt = '实盘 · 已接通';
+    tip = '研究员/财务/知识库/数据源均读自本机真实文件';
+  } else if(hasKey){
+    cls = 'rose'; txt = '桥未运行';
+    tip = '有钥匙但连不上 kb-bridge：先跑 python3.11 bridge/kb_bridge.py' +
+          (typeof REAL !== 'undefined' && REAL.err ? '（' + REAL.err + '）' : '');
+  } else {
+    cls = ''; txt = '公开层';
+    tip = '未插钥匙：只显示不敏感的真实数据，机密部分上锁。点这里输密码';
+  }
+  el2.innerHTML = `<span class="tag ${cls}" title="${tip}" style="cursor:pointer">${txt}</span>`;
+  el2.onclick = ()=>{
+    if(authed) return toast('已经接通了。机密数据仅本机可见');
+    if(typeof openVault === 'function') openVault(()=>{
+      if(typeof loadReal === 'function') loadReal(true).then(()=> drawDataState());
+    });
+  };
+}
+
 /* ---------- bootstrap ---------- */
 (function boot(){
   const d = new Date();
@@ -155,6 +178,23 @@ document.addEventListener('keydown', e=>{
   if(typeof syncTopbar === 'function') syncTopbar();
   /* 世界层启动（office.js 提供）；引擎未就绪时静默跳过（迁移期） */
   if(typeof startOffice === 'function') startOffice();
+  drawDataState();
+  /* 公开层不需要钥匙，开局就拉：wiki 图谱 / 信源分布 / 名册身份 */
+  if(typeof loadPublic === 'function')
+    loadPublic().then(()=>{
+      drawDataState();
+      if(PANEL_OPEN && RENDER[PANEL_OPEN]) RENDER[PANEL_OPEN]();
+      if(typeof syncTopbar === 'function') syncTopbar();
+    });
+  /* 钥匙已经存在本机就直接接真 —— 以前少了这一步，每次刷新全站回落 mock，
+     必须手动转一遍保险库才变真，整站因此永远看起来像剧本。 */
+  if(typeof loadReal === 'function' && typeof VAULT !== 'undefined' && VAULT.key){
+    loadReal(true).then(ok=>{
+      drawDataState();
+      if(ok && PANEL_OPEN && RENDER[PANEL_OPEN]) RENDER[PANEL_OPEN]();
+      if(!ok && REAL.err) console.warn('[real] 接真失败:', REAL.err);
+    });
+  }
 })();
 
 /* ---------- 配色切换：经典（暖木） / 清新（奶油蓝格纸） ---------- */

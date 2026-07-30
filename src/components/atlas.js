@@ -7,79 +7,9 @@
    MAP 与 GRAPH 共用同一份节点模型，避免两个视图讲两个故事。
    字段：docs 篇数 / conf 来源置信 0-1 / fresh 最近一篇距今天数 / edges 依赖
    ========================================================================== */
-/* [名称, 环节层, docs, conf, freshDays, 主要来源] */
-const ATLAS_RAW = {
-  '半导体':[
-    ['光刻机','设备',6,.75,12,['SemiAnalysis','巨潮资讯公告']],
-    ['刻蚀机','设备',9,.85,4,['高临 Third Bridge','巨潮资讯公告']],
-    ['薄膜沉积','设备',7,.8,9,['高临 Third Bridge']],
-    ['量测设备','设备',2,.5,96,['进门财经']],
-    ['混合键合','设备',1,.6,152,['SemiAnalysis']],
-    ['减薄机','设备',0,0,999,[]],
-    ['光刻胶','材料',3,.9,210,['SemiAnalysis','高临 Third Bridge']],
-    ['电子特气','材料',8,.8,6,['TrendForce','巨潮资讯公告']],
-    ['CMP 抛光液','材料',4,.7,38,['进门财经']],
-    ['大硅片','材料',11,.75,3,['巨潮资讯公告','akshare']],
-    ['靶材','材料',5,.65,44,['进门财经']],
-    ['掩膜版','材料',0,0,999,[]],
-    ['湿电子化学品','材料',2,.55,120,['知识星球']],
-    ['EDA 工具','设计',3,.7,61,['SemiAnalysis']],
-    ['IP 核','设计',1,.5,188,['Substack 精选']],
-    ['封测','制造',9,.7,5,['巨潮资讯公告','财联社电报']]],
-  'AI算力':[
-    ['HBM','存储',14,.9,1,['SemiAnalysis','TrendForce']],
-    ['先进封装 CoWoS','封装',10,.85,3,['SemiAnalysis','高临 Third Bridge']],
-    ['光模块 800G','互联',12,.8,2,['巨潮资讯公告','进门财经']],
-    ['铜连接','互联',3,.6,55,['SemiAnalysis']],
-    ['交换芯片','网络',5,.7,21,['SemiAnalysis']],
-    ['液冷','散热',8,.75,7,['巨潮资讯公告']],
-    ['服务器电源','供电',4,.6,33,['进门财经']],
-    ['PCB 高多层','基材',9,.8,4,['巨潮资讯公告','TrendForce']],
-    ['GPU','算力',13,.85,1,['SemiAnalysis','Substack 精选']],
-    ['自研 ASIC','算力',6,.7,11,['SemiAnalysis']],
-    ['电力供给','基建',2,.5,140,['财联社电报']],
-    ['IDC 上架率','基建',1,.45,175,['知识星球']]],
-  '新能源':[
-    ['磷酸铁锂','正极',7,.7,8,['巨潮资讯公告']],
-    ['三元前驱体','正极',4,.65,29,['进门财经']],
-    ['隔膜','辅材',6,.7,14,['巨潮资讯公告']],
-    ['电解液','辅材',5,.65,17,['进门财经']],
-    ['六氟磷酸锂','辅材',3,.6,48,['TrendForce']],
-    ['固态电池','技术',9,.6,2,['财联社电报','知识星球']],
-    ['硅碳负极','负极',4,.7,25,['高临 Third Bridge']],
-    ['光伏银浆','光伏',2,.55,88,['进门财经']],
-    ['HJT 电池','光伏',3,.5,66,['知识星球']],
-    ['逆变器','光伏',5,.7,19,['巨潮资讯公告']],
-    ['风电主轴','风电',1,.5,196,['进门财经']],
-    ['储能 PCS','储能',6,.7,10,['巨潮资讯公告']]],
-  '消费':[
-    ['白酒渠道库存','白酒',3,.8,26,['久谦中台']],
-    ['啤酒吨价','啤酒',1,.7,182,['久谦中台']],
-    ['原奶价格','乳品',2,.6,71,['进门财经']],
-    ['调味品动销','调味',0,0,999,[]],
-    ['宠物食品','新消费',1,.5,133,['知识星球']],
-    ['医美耗材','新消费',2,.6,94,['久谦中台']],
-    ['免税客单','出行',0,0,999,[]],
-    ['快递单价','物流',3,.65,41,['巨潮资讯公告']]],
-  '医药':[
-    ['CXO 订单','外包',2,.7,58,['高临 Third Bridge']],
-    ['GLP-1','创新药',3,.75,22,['Substack 精选']],
-    ['创新药出海','创新药',1,.6,164,['进门财经']],
-    ['医疗设备招标','设备',1,.55,118,['财联社电报']],
-    ['血制品','生物制品',0,0,999,[]],
-    ['IVD 集采','诊断',0,0,999,[]],
-    ['中药提价','中药',1,.5,205,['进门财经']],
-    ['疫苗批签发','生物制品',0,0,999,[]]],
-  '军工':[
-    ['军用连接器','元件',2,.6,77,['进门财经']],
-    ['碳纤维','材料',3,.65,52,['巨潮资讯公告']],
-    ['高温合金','材料',4,.7,31,['高临 Third Bridge']],
-    ['惯导','分系统',1,.55,151,['进门财经']],
-    ['雷达 T/R 组件','分系统',2,.6,86,['进门财经']],
-    ['卫星互联网','总体',5,.6,13,['财联社电报']],
-    ['无人机','总体',6,.65,9,['财联社电报','巨潮资讯公告']],
-    ['军工电子元器件','元件',3,.6,63,['巨潮资讯公告']]]
-};
+/* 这里以前写死了 60 个假节点（ATLAS_RAW）。已删。
+   节点现在全部来自 ~/knowledge 的 125 页行业 wiki，走公开层端点 /api/wiki，
+   访客不用钥匙也看得到真图谱；只有 wiki 原文与缺口一手证据需要钥匙。 */
 
 /* 真实 wiki 的 parent_sector 有二十来个大类，写死 6 个域会让新域拿不到颜色、
    覆盖度按 0 个节点算出 NaN。所以域列表与配色都从当前节点集推导。 */
@@ -100,50 +30,17 @@ const DOMAIN_COLOR = {'半导体':'var(--teal)','AI算力':'var(--sky)','新能�
 const DOMAIN_HEX = {'半导体':'#57bfb4','AI算力':'#7fa8dd','新能源':'#e9b23c',
   '消费':'#ef86ad','医药':'#e8535a','军工':'#7a8a5e'};
 
-/* 展平 + 自动生成依赖边：同域按顺序串联，另加若干跨域真实依赖 */
+/* 节点集由 applyRealAtlas()（real.js）从真实 wiki 灌进来。开局为空。 */
 DATA.atlas = [];
-Object.keys(ATLAS_RAW).forEach(dom=>{
-  ATLAS_RAW[dom].forEach((r,i)=>{
-    DATA.atlas.push({id:dom+'_'+i, domain:dom, layer:r[1], name:r[0],
-      docs:r[2], conf:r[3], fresh:r[4], sources:r[5], edges:[]});
-  });
-});
-function nodeByName(n){ return DATA.atlas.find(x=>x.name===n); }
-Object.keys(ATLAS_RAW).forEach(dom=>{
-  const list = DATA.atlas.filter(n=>n.domain===dom);
-  list.forEach((n,i)=>{ if(i) n.edges.push(list[i-1].id); });
-});
-[['光刻胶','光刻机'],['光刻胶','封测'],['光刻胶','大硅片'],['减薄机','混合键合'],
- ['减薄机','封测'],['掩膜版','光刻机'],['HBM','先进封装 CoWoS'],['HBM','大硅片'],
- ['先进封装 CoWoS','混合键合'],['GPU','HBM'],['液冷','电力供给'],['PCB 高多层','铜连接'],
- ['固态电池','硅碳负极'],['储能 PCS','逆变器'],['调味品动销','原奶价格'],
- ['免税客单','快递单价'],['IVD 集采','医疗设备招标'],['血制品','疫苗批签发'],
- ['碳纤维','无人机'],['高温合金','卫星互联网']
-].forEach(([a,b])=>{
-  const na = nodeByName(a), nb = nodeByName(b);
-  if(na && nb && !na.edges.includes(nb.id)) na.edges.push(nb.id);
-});
-
-/* 被依赖数：缺口排序用 */
 function inDegree(id){ return DATA.atlas.filter(n=> n.edges.includes(id)).length; }
-
-/* 沉淀层种子：原始材料 vs 老板打标验证后的成果，两层硬隔离（需求 8） */
-[['光刻胶',2],['HBM',3],['先进封装 CoWoS',2],['电子特气',1],['液冷',1],['白酒渠道库存',1],['固态电池',1]]
-  .forEach(([n,v])=>{ const x = nodeByName(n); if(x) x.validated = v; });
 
 let ATLAS_LAYER = 'all';       /* all | raw | validated */
 let ATLAS_VIEW = 'map';        /* map | graph */
 let ATLAS_DIM  = 'industry';   /* industry | company | conf | fresh */
-let ATLAS_CO   = '中芯国际';
+let ATLAS_CO   = '';
 
-const COMPANY_MAP = {
-  '中芯国际':['大硅片','刻蚀机','薄膜沉积','光刻胶','电子特气','掩膜版','封测'],
-  '北方华创':['刻蚀机','薄膜沉积','量测设备','电子特气','减薄机'],
-  '沪硅产业':['大硅片','CMP 抛光液','靶材'],
-  '中际旭创':['光模块 800G','铜连接','交换芯片','PCB 高多层'],
-  '宁德时代':['磷酸铁锂','隔膜','电解液','六氟磷酸锂','固态电池','硅碳负极'],
-  '贵州茅台':['白酒渠道库存','快递单价']
-};
+/* 按公司维度：由 applyRealAtlas() 从个股 wiki 的 belongs_to 反查填充 */
+const COMPANY_MAP = {};
 
 function plotClass(n){
   if(n.docs === 0) return 'fog';
@@ -167,6 +64,20 @@ function nodeColor(n){
 
 RENDER.atlas = function(){
   const scr = $('#scr-atlas');
+  if(!DATA.atlas.length){
+    scr.innerHTML = `
+      <div class="screen-head"><h1>KNOWLEDGE ATLAS</h1>
+        <span class="sub">节点来自本机 125 页行业 wiki</span></div>
+      ${win('图谱还没加载', `<div class="t-sm" style="font-weight:700;line-height:1.9">
+          ${typeof REAL !== 'undefined' && REAL.pubErr
+            ? '连不上本地桥：<span class="t-rose">' + REAL.pubErr + '</span><br>先跑 <code>python3.11 bridge/kb_bridge.py</code>。'
+            : '正在读 ~/knowledge…'}</div>
+        <div class="t-xs t-dim" style="font-weight:700;margin-top:8px">
+          这里不会用写死的假节点占位。图谱要么是真的，要么空着。</div>`, {color:'ink'})}`;
+    if(typeof loadPublic === 'function' && !REAL.pub)
+      loadPublic().then(ok=>{ if(ok && PANEL_OPEN === 'atlas') RENDER.atlas(); });
+    return;
+  }
   const gaps = DATA.atlas.filter(n=> n.docs === 0 || (n.docs <= 2 && n.fresh > 120))
     .map(n=> ({n, score: inDegree(n.id)*10 + (n.docs===0?8:3)}))
     .sort((a,b)=> b.score - a.score).slice(0,7);
@@ -180,7 +91,7 @@ RENDER.atlas = function(){
       <div class="tools">
         ${typeof REAL !== 'undefined' && REAL.kb
           ? `<span class="tag cyan" title="节点=行业 wiki 页；docs=sources.jsonl 标到它头上的原始材料份数；fresh=最近一份距今天数">实盘知识库 · ${REAL.kb.as_of}</span>`
-          : '<span class="demo-mark">编造节点</span>'}
+          : '<span class="tag">公开层 · 真图谱</span>'}
         <button class="px-btn ${ATLAS_VIEW==='map'?'on':''}" data-view="map">▦ MAP</button>
         <button class="px-btn ${ATLAS_VIEW==='graph'?'on':''}" data-view="graph">◈ GRAPH</button>
       </div>
@@ -247,7 +158,7 @@ function drawMap(){
   const stageW = stage.clientWidth || 900;
   const colW = Math.max(184, Math.floor((stageW - 24) / 3));
   /* 真实模式下域有二十来个，节点少的排后面，免得一堆只有一页的域占满第一屏。
-     域数一多就切流式布局，绝对定位那套只在编造的 6 个域下排得开。 */
+     域数一多就切流式布局，绝对定位那套只在原来那 6 个写死的域下排得开。 */
   const order = atlasDomains()
     .map(d=> [d, DATA.atlas.filter(n=> n.domain === d).length])
     .sort((a, b)=> b[1] - a[1]).map(x=> x[0]);

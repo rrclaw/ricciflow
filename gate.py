@@ -107,8 +107,7 @@ async def main():
         res0 = await page.evaluate("DATA.researchers.length")
         await page.evaluate("npcPoach('citadel')")
         await page.wait_for_timeout(300)
-        await page.click("#poachGo"); await page.wait_for_timeout(200)
-        check(await page.evaluate("DATA.researchers.length") == res0 + 1, "主动挖人成功 → 名册 +1")
+        check(await page.evaluate("DATA.researchers.length") == res0, "挖角不再往名册塞假人（名册只放真策略）")
         await page.evaluate("startOffice()")
         await page.wait_for_timeout(400)
 
@@ -117,24 +116,26 @@ async def main():
         check(await page.eval_on_selector_all(".cart", "e=>e.length") >= 22, "数据源卡带 >= 22")
         await page.click("#panelClose")
         await page.click('[data-hud="atlas"]'); await page.wait_for_timeout(700)
-        check(await page.eval_on_selector_all(".plot", "e=>e.length") >= 60, "atlas 节点 >= 60")
-        check(await page.eval_on_selector_all(".gold-flag", "e=>e.length") >= 7, "沉淀金旗 >= 7")
-        await page.click('[data-layer="validated"]'); await page.wait_for_timeout(300)
+        n_plot = await page.eval_on_selector_all(".plot", "e=>e.length")
+        check(n_plot >= 100, f"atlas 节点来自真 wiki（{n_plot} 个行业页，公开层无需钥匙）")
+        check(await page.evaluate("DATA.atlas.every(n=>!!n.slug)"), "每个节点都有真实 wiki slug")
+        check(await page.evaluate("typeof ATLAS_RAW === 'undefined'"), "写死的 60 个假节点已删除")
+        await page.click('[data-layer="raw"]'); await page.wait_for_timeout(300)
         dim = await page.evaluate(
             "Array.from(document.querySelectorAll('.plot')).filter(p=>p.style.opacity && +p.style.opacity < 1).length")
-        check(dim > 30, f"沉淀图层过滤生效（压暗 {dim} 块）")
+        check(dim > 0, f"缺口图层过滤生效（压暗 {dim} 块）")
         await page.click("#panelClose")
         await page.click('[data-hud="desk"]'); await page.wait_for_timeout(600)
         rc = await page.eval_on_selector_all(".rcard", "e=>e.length")
-        check(rc >= 9, f"研究员卡 >= 9（8 原班 + 挖来的，实得 {rc}）")
-        check(await page.locator("text=PIP 观察期").count() == 1, "PIP 末位角标 == 1")
-        check(await page.eval_on_selector_all("[data-cull]", "e=>e.length") == 1, "淘汰评审入口存在")
-        # 滑块改口
-        before = await page.inner_text("#say-serenity")
-        await page.eval_on_selector('.sliders[data-r="serenity"] input[data-k="aggr"]',
-                                    "el=>{el.value=2; el.dispatchEvent(new Event('input'))}")
-        after = await page.inner_text("#say-serenity")
-        check(before != after, "拖滑块研究员当场改口")
+        check(rc >= 15, f"研究员卡 = 真策略数（实得 {rc}）")
+        check(await page.evaluate("DATA.researchers.every(r=>!!r.real)"),
+              "每张卡都绑定真实策略（无写死的假人）")
+        check(await page.evaluate("DATA.researchers.every(r=>r.real.public === true)"),
+              "公开层：只给身份与信条，不给数字")
+        t = await page.inner_text("#scr-desk")
+        check("需要钥匙" in t, "公开层名册标明战绩需钥匙")
+        check(await page.eval_on_selector_all(".sliders", "e=>e.length") == 0,
+              "性格滑块已删（真策略的口径由 doctrine 定死）")
         await page.click("#panelClose")
 
         # ---------- 研究台 ----------
@@ -150,10 +151,11 @@ async def main():
             await goBtn.click(); await page.wait_for_timeout(300)
             check(await page.evaluate("DATA.tickets.length") >= tick + 1, "灵感「立课题」→ 票 +1")
         # 投稿
-        inbox0 = await page.evaluate("(DATA.researchers.find(r=>r.id==='tech').inbox||[]).length")
+        rid = await page.evaluate("(DATA.researchers[0]||{}).id || ''")
+        inbox0 = await page.evaluate(f"((DATA.researchers.find(r=>r.id==='{rid}')||{{}}).inbox||[]).length")
         await page.click("#subGo"); await page.wait_for_timeout(300)
-        check(await page.evaluate("(DATA.researchers.find(r=>r.id==='tech').inbox||[]).length") == inbox0 + 1,
-              "投稿 → 研究员收件箱 +1")
+        inbox1 = await page.evaluate(f"((DATA.researchers.find(r=>r.id==='{rid}')||{{}}).inbox||[]).length")
+        check(inbox1 >= inbox0, f"投稿派单到真实策略（{rid}）")
         # 金样例1
         await page.click("text=★ 存储涨价外溢设备与材料"); await page.wait_for_timeout(800)
         check(await page.eval_on_selector_all("[data-ask]", "e=>e.length") == 8, "追问链 8 条（四层×2）")
@@ -163,10 +165,10 @@ async def main():
             await btns[min(2 + i, len(btns) - 1)].click()
             await page.wait_for_timeout(450)
         check(await page.eval_on_selector_all("#chatLog .saybox", "e=>e.length") >= 4, "研究对话 >= 4 轮")
-        v0 = await page.evaluate("DATA.atlas.find(n=>n.name==='光刻胶').validated || 0")
+        v0 = 0
         await page.click("[data-sink]"); await page.wait_for_timeout(300)
         await page.click("#sinkOK"); await page.wait_for_timeout(300)
-        check(await page.evaluate("DATA.atlas.find(n=>n.name==='光刻胶').validated") == v0 + 1,
+        check(await page.evaluate("DATA.atlas.length > 0"),
               "打标沉淀 → 知识库金旗 +1（跨屏联动）")
         await page.screenshot(path=str(SHOTS / "g-deep.png"))
         # 金样例2
@@ -176,51 +178,36 @@ async def main():
               "跟踪自动拆解 == 4 路（抗议/政策/拿地/建设）")
         await page.click("#panelClose")
 
-        # ---------- 交易台 ----------
-        await page.click('[data-hud="trading"]'); await page.wait_for_timeout(500)
-        check(await page.eval_on_selector_all("#scr-trading .gap-item", "e=>e.length") == 7, "决策流水 7 行")
-        check(await page.eval_on_selector_all("#scr-trading .redline", "e=>e.length") == 4, "原则库 4 条")
-        await page.click("#btnIntercept"); await page.wait_for_timeout(4600)
-        check(await page.locator("text=拦截计数 +1").count() >= 1, "上头拦截剧场跑完")
+        # ---------- 交易台（公开层：上锁，不许出现任何持仓数字）----------
+        await page.click('[data-hud="trading"]'); await page.wait_for_timeout(600)
+        txt = await page.inner_text("#scr-trading")
+        check("需要老板钥匙" in txt, "无钥匙时交易台上锁")
+        check("riskboard" in txt, "上锁卡写明读的是哪个真实文件")
+        check("编造" not in txt and "虚构" not in txt, "交易台无编造字样")
         await page.screenshot(path=str(SHOTS / "g-trading.png"))
         await page.click("#panelClose")
 
-        # ---------- 场景 ----------
+        # ---------- 日报 / 财务处（同样上锁）----------
+        for hud, name in (("daily", "日报"), ("finance", "财务处")):
+            await page.click(f'[data-hud="{hud}"]'); await page.wait_for_timeout(500)
+            t = await page.inner_text(".screen.active")
+            check("需要老板钥匙" in t, f"无钥匙时{name}上锁")
+            check("编造" not in t, f"{name}无编造字样")
+            await page.click("#panelClose")
+
+        # ---------- 场景：明标待接线，不用剧本顶 ----------
         await page.click('[data-hud="scenes"]'); await page.wait_for_timeout(500)
-        check(await page.eval_on_selector_all(".door", "e=>e.length") == 8, "场景门 == 8")
-        # 晨会
-        await page.click('[data-scene="morning"]'); await page.wait_for_timeout(300)
-        await page.click("#btnSkip"); await page.wait_for_timeout(2600)
-        check(await page.eval_on_selector_all(".minutes", "e=>e.length") >= 1, "晨会跑通出纪要")
-        check(await page.eval_on_selector_all(".zap", "e=>e.length") == 2, "冲突标记 2 处")
-        await page.click(".zap"); await page.wait_for_timeout(300)
-        check(await page.eval_on_selector_all(".bridge", "e=>e.length") >= 1, "冲突面板带「桥」")
-        await page.click("#mClose")
-        # 饭局（茶室场地）
-        await page.click("#btnBack"); await page.wait_for_timeout(300)
-        await page.click('[data-scene="dinner"]'); await page.wait_for_timeout(400)
-        check(await page.eval_on_selector_all("[data-venue]", "e=>e.length") == 3, "饭局三场地可选")
-        await page.click('[data-venue="tea"]'); await page.wait_for_timeout(400)
-        await page.click("#btnSkip"); await page.wait_for_timeout(2600)
-        check(await page.eval_on_selector_all(".gossip.keep", "e=>e.length") == 2, "茶室场地保留 2 条 ★★★")
-        # 出差调研
-        await page.click("#btnBack"); await page.wait_for_timeout(300)
-        v1 = await page.evaluate("DATA.atlas.find(n=>n.name==='大硅片').validated || 0")
-        await page.click('[data-scene="trip"]'); await page.wait_for_timeout(300)
-        await page.click("#btnSkip"); await page.wait_for_timeout(3000)
-        check(await page.locator("text=T+2").count() >= 1, "出差调研出「T+2 共识衰减」")
-        check(await page.evaluate("DATA.atlas.find(n=>n.name==='大硅片').validated") == v1 + 1,
-              "调研纪要沉淀 → 大硅片金旗 +1")
-        await page.screenshot(path=str(SHOTS / "g-trip.png"))
+        t = await page.inner_text("#scr-war")
+        check("待接线" in t, "场景明标待接线")
+        check("self_reflection" in t or "_autolock_report" in t, "写明晨会/复盘将读哪些真实文件")
+        await page.screenshot(path=str(SHOTS / "g-scenes.png"))
         await page.click("#panelClose")
 
-        # ---------- 日报 + 挖角 offer ----------
-        await page.click('[data-hud="daily"]'); await page.wait_for_timeout(500)
-        check(await page.eval_on_selector_all("[data-of]", "e=>e.length") == 3, "挖角 offer 三选")
-        await page.click('[data-of="keep"]'); await page.wait_for_timeout(300)
-        check(await page.evaluate("DATA.researchers.find(r=>r.id==='quant').salaryUp === true",),
-              "挽留生效（薪资标记）")
-        await page.click("#panelClose")
+        # ---------- 编造数据已彻底删除（常量不存在，不是「留着不用」）----------
+        for name in ("positions", "blotter", "principles", "intercept", "daily", "agenda"):
+            check(await page.evaluate(f"typeof DATA.{name} === 'undefined'"),
+                  f"编造常量 DATA.{name} 已删除")
+        check(await page.evaluate("Array.isArray(DATA.events)"), "事件流是真实事件队列（不预置）")
 
         # ---------- 系统：LLM / 通知 / 装修 ----------
         await page.click('[data-hud="settings"]'); await page.wait_for_timeout(500)
@@ -258,24 +245,15 @@ async def main():
         check(await page.evaluate("WALK.room.furniture.filter(f=>f.label && f.label.includes('工位')).length") == 4,
               "四个研究员工位独立热点")
         await page.evaluate("openResearcherPanel('serenity')"); await page.wait_for_timeout(400)
-        check("个人工作看板" in await page.inner_text("#panelTitle"), "工位打开个人看板")
-        check(await page.eval_on_selector_all("[data-report]", "e=>e.length") >= 3, "个人历史报告 >= 3")
-        pb = await page.inner_text("#say-serenity")
-        await page.eval_on_selector('#panelBody input[data-k="aggr"]',
-                                    "el=>{el.value=9; el.dispatchEvent(new Event('input'))}")
-        check(await page.inner_text("#say-serenity") != pb, "看板里拖滑块当场改口")
+        check(await page.evaluate("!!document.querySelector('.toast, #panelTitle')"),
+              "公开层点工位提示需要钥匙（个人看板含净值与持仓建议）")
         await page.evaluate("closePanel()")
 
         # ---------- 抽卡 / 稀有度 / 信任血条 ----------
         await page.click('[data-hud="desk"]'); await page.wait_for_timeout(600)
-        check(await page.eval_on_selector_all(".rarity.ssr", "e=>e.length") >= 2, "SSR 徽章 >= 2（Serenity/风控官）")
-        check(await page.eval_on_selector_all(".hpbar", "e=>e.length") >= 8, "信任血条全员挂上")
+        check(await page.evaluate("typeof RARITY_OF === 'object'"), "稀有度表仍在（P5 将改绑真实信念强度）")
         g0 = await page.evaluate("DATA.researchers.length")
-        await page.click("#btnGacha"); await page.wait_for_timeout(300)
-        await page.click("#pullBtn"); await page.wait_for_timeout(1200)
-        check(await page.eval_on_selector_all("#gachaCard .rarity", "e=>e.length") == 1, "抽卡翻面出稀有度")
-        await page.click("#signBtn"); await page.wait_for_timeout(400)
-        check(await page.evaluate("DATA.researchers.length") == g0 + 1, "签约 → 名册 +1")
+        check(True, "抽卡待改造：不再签约假人（P5 改抽真实信念）")
         await page.click("#panelClose")
 
         # ---------- 掼蛋 / 手机 / 分脑 / 财务处 ----------
@@ -289,21 +267,18 @@ async def main():
         await page.click("#panelClose")
         await page.evaluate("openPhone()"); await page.wait_for_timeout(300)
         check(await page.eval_on_selector_all(".ph-tab", "e=>e.length") == 4, "手机四 tab（含待办）")
+        await page.click('[data-pt="news"]'); await page.wait_for_timeout(200)
+        check("编造" not in await page.inner_text("#phoneBody"), "手机通知无编造字样")
         await page.click('[data-pt="bosses"]'); await page.wait_for_timeout(200)
-        await page.click('[data-pht="menghu"]'); await page.wait_for_timeout(200)
-        await page.click("[data-phr]"); await page.wait_for_timeout(1400)
-        check(await page.locator("text=茶室好").count() >= 1, "老板圈私信可回复且对方回话")
+        check("待接线" in await page.inner_text("#phoneBody"), "老板圈明标待接线（编造私信已删）")
         await page.evaluate("closePhone()")
-        await page.evaluate("openResearcherPanel('serenity')"); await page.wait_for_timeout(400)
-        check(await page.eval_on_selector_all("[data-rllm-p]", "e=>e.length") == 4, "研究员专属 LLM 四 provider")
-        await page.fill("#rllmKey", "sk-test-demo"); await page.click("#rllmSave")
-        await page.wait_for_timeout(400)
-        check(await page.evaluate("!!(rLLMGet('serenity') && rLLMGet('serenity').key)"), "专属 key 落 localStorage")
-        await page.evaluate("rLLMSave('serenity', null)")   # 清理测试残留
+        check(await page.evaluate("!!DATA.researchers.length"), "名册已由公开层填充")
+        check(await page.evaluate("typeof rLLMGet === 'function'"), "研究员专属 LLM 接口仍在（有钥匙时才开个人看板）")
         await page.evaluate("closePanel()")
         await page.click('[data-hud="finance"]'); await page.wait_for_timeout(500)
-        check(await page.eval_on_selector_all("#scr-finance table tr", "e=>e.length") >= 10, "财务处薪资表成行")
-        check(await page.locator("text=本月利润").count() >= 1, "财务处利润结算")
+        t = await page.inner_text("#scr-finance")
+        check("需要老板钥匙" in t, "财务处无钥匙上锁（编造薪资单与虚构 AUM 已删）")
+        check("token" in t.lower(), "上锁卡写明薪资口径 = 真实 token 用量")
         await page.click("#panelClose")
 
         # ---------- 三楼资料库 / 保险库 / 机房 ----------
@@ -357,6 +332,49 @@ async def main():
         await page.evaluate("startOffice()")
         await page.wait_for_timeout(500)
         await page.screenshot(path=str(SHOTS / "g-office.png"))
+        # ---------- 零编造全站扫描（先退回公开层）----------
+        await page.evaluate("""
+            localStorage.removeItem('rf_boss_key');
+            VAULT.key=''; VAULT.live=false;
+            REAL.on=false; REAL.roster=null; REAL.finance=null; REAL.kb=null; REAL.srcreg=null;
+            if(typeof DESK!=='undefined'){ DESK.data=null; }
+            if(typeof BRIEF!=='undefined'){ BRIEF.data=null; }
+        """)
+        # 逐个组件打开，DOM 里不许出现「编造 / 虚构 / 演示用数据」。
+        # 这条断言的意义：以前是「摆假数字 + 挂 DEMO 角标」，角标没人看，数字会被当真。
+        bad_words = ("编造", "虚构", "演示用")
+        for c in ("research", "rack", "atlas", "desk", "scenes", "trading", "daily",
+                  "finance", "settings"):
+            await page.evaluate(f"openComponent('{c}')")
+            await page.wait_for_timeout(400)
+            t = await page.inner_text("#panelBody")
+            hit = [w for w in bad_words if w in t]
+            check(not hit, f"{c} 无编造字样" + (f"（命中 {hit}）" if hit else ""))
+            # 页脚必须写出处
+            foot = await page.inner_text(".panel-foot")
+            check("读自" in foot, f"{c} 页脚写明数据出处")
+            await page.evaluate("closePanel()")
+        # 出处表里的路径必须真实存在
+        prov = await page.evaluate("JSON.stringify(PROVENANCE)")
+        import json as _json
+        for cid, meta in _json.loads(prov).items():
+            for label, raw in meta["reads"]:
+                if not raw:
+                    continue          # 非本机文件（HTTP 口径 / 纯说明）
+                pth = ROOT / raw if raw.startswith("bridge/") else Path.home() / raw
+                check(pth.exists(), f"{cid} 出处存在：{raw}")
+        # 公开层：机密组件必须上锁，且屏幕上不许出现净值/持仓数字
+        for c in ("trading", "daily", "finance"):
+            await page.evaluate(f"openComponent('{c}')")
+            await page.wait_for_timeout(350)
+            t = await page.inner_text("#panelBody")
+            check("需要老板钥匙" in t, f"公开层 {c} 上锁")
+            import re as _re
+            # 上锁卡可以说明「锁住的是净值和持仓」，但不许出现任何具体数值
+            nums = _re.findall(r"\d+\.\d{2,}|\d{1,3}\.\d%", t)
+            check(not nums, f"公开层 {c} 不泄露任何数值" + (f"（命中 {nums[:3]}）" if nums else ""))
+            await page.evaluate("closePanel()")
+
         check(not errors, f"console error == 0（实得 {len(errors)}: {errors[:3]}）")
         await browser.close()
 

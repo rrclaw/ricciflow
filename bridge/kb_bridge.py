@@ -234,6 +234,17 @@ class H(http.server.BaseHTTPRequestHandler):
                 return self._send(200, distill.insight_daily(n))
             except Exception as e:
                 return self._send(200, {"ok": False, "error": str(e)})
+        # ---- 公开安全子集：不含持仓/净值/薪资/原文，谁都能看 ----
+        if u.path in ("/api/wiki", "/api/srcreg", "/api/roster_public"):
+            try:
+                if u.path == "/api/roster_public":
+                    import real
+                    return self._send(200, real.roster_public())
+                import kbreal
+                return self._send(200, kbreal.wiki_list() if u.path == "/api/wiki"
+                                  else kbreal.source_registry())
+            except Exception as e:
+                return self._send(200, {"ok": False, "error": str(e)})
         if not self._auth():
             return self._send(401, {"error": "老板钥匙不对。保安请你去前台喝茶"})
         if u.path == "/api/inquiry":
@@ -262,18 +273,28 @@ class H(http.server.BaseHTTPRequestHandler):
                 return self._send(200, real.finance())
             except Exception as e:
                 return self._send(200, {"ok": False, "error": str(e)})
-        if u.path in ("/api/wiki", "/api/wiki_page", "/api/srcreg"):
-            # 真实知识库：613 页 wiki + 1887 条缺口 + 8552 条来源注册
+        if u.path == "/api/wiki_page":
+            # wiki 原文属机密层：整页内容 + 缺口一手证据
             try:
                 import kbreal
-                if u.path == "/api/wiki":
-                    return self._send(200, kbreal.wiki_list())
-                if u.path == "/api/srcreg":
-                    return self._send(200, kbreal.source_registry())
                 slug = (q.get("slug") or [""])[0]
                 if not slug:
                     return self._send(400, {"ok": False, "error": "缺 slug"})
                 return self._send(200, kbreal.wiki_page(slug))
+            except Exception as e:
+                return self._send(200, {"ok": False, "error": str(e)})
+        if u.path == "/api/desk":
+            # 交易台：跨策略风险报表 + 真实平仓流水 + R1-R10 风控基线
+            try:
+                import deskreal
+                return self._send(200, deskreal.desk())
+            except Exception as e:
+                return self._send(200, {"ok": False, "error": str(e)})
+        if u.path == "/api/briefing":
+            # 日报 = summary 当日报告原文 + 各账本真实待办
+            try:
+                import briefing
+                return self._send(200, briefing.briefing())
             except Exception as e:
                 return self._send(200, {"ok": False, "error": str(e)})
         if u.path == "/api/buildings":

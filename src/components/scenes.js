@@ -122,44 +122,27 @@ function setStep(i){
 
 RENDER.war = function(){
   const scr = $('#scr-war');
+  /* 晨会/复盘要的是「各研究员观点的总结和精华」，素材是每个策略自己落盘的
+     观点段与反思段。那批解析器还没写，所以这里明说没接，不用剧本顶。 */
   scr.innerHTML = `
-    <div class="screen-head">
-      <h1>WAR ROOM</h1>
-      <span class="sub">场景 · 不同的会派不同的人、走不同的流程</span>
-      <span class="tools t-xs t-dim" style="font-weight:700">带 ▶ 的三个能真跑完整流程</span>
-    </div>
-    <div class="doors" id="doorGrid"></div>`;
-  const g = $('#doorGrid');
-  DATA.scenes.forEach(s=>{
-    const cast = s.cast.map(id=> DATA.researchers.find(r=>r.id===id)).filter(Boolean);
-    const body = `<div class="dbody">
-        <div class="avstack">
-          ${cast.map(r=> avatarHTML(r.sp,'s3')).join('')}
-          ${s.guests ? Array(s.guests).fill(0).map(()=>avatarHTML('guest','s3')).join('') : ''}
-        </div>
-        <div class="t-xs" style="line-height:1.6;font-weight:700">产出：${s.out}</div>
-        <div class="flowmap">${s.flow.map((f,i)=>
-          (i?'<span class="flowarw">▸</span>':'') + `<span class="flownode">${f}</span>`).join('')}</div>
-        <div class="dmeta"><span>${cast.length + (s.guests||0)} 人参与</span><span>${s.dur}</span></div>
-        <button class="px-btn sm ${s.run?'on dotted':''}" style="width:100%;margin-top:8px" data-scene="${s.id}">
-          ${s.run ? '▶ 开会' : '□ 仅流程图（demo 未实现）'}
-        </button>
-      </div>`;
-    g.insertAdjacentHTML('beforeend', win(s.ico + ' · ' + s.n, body, {color:s.color, cls:'door', sub:s.dur}));
-  });
-  $$('[data-scene]').forEach(b=> b.onclick = ()=>{
-    const s = DATA.scenes.find(x=>x.id === b.dataset.scene);
-    if(s.run) openScene(s); else toast('这个场景在 demo 里只出流程图。要真跑再说。');
-  });
+    <div class="screen-head"><h1>场景 · WAR ROOM</h1>
+      <span class="sub">晨会与复盘 = 各策略观点原文的汇总，不是剧本</span></div>
+    ${pendingCard('晨会 · 各研究员观点精华', `
+      晨会要并排放每个策略<b>自己文件里的观点原文</b>：今日锁仓结果与空仓理由、
+      各自 doctrine 立场、以及分歧点（同一标的被两家给出相反判断时并列，不合并不裁决）。<br>
+      复盘要放今日真实净值变化、今日真实平仓、以及各策略自己写的反思段。<br>
+      <span class="t-dim">综合摘要由本地 Claude 跑出文件，网站只读文件 —— 网站不做提炼。</span>`,
+      ['invest skills/brownsugar/reports/&lt;date&gt;/report.md · self_reflection_16.md',
+       'invest skills/serenity/reports/&lt;date&gt;/_autolock_report.md · 3run.json',
+       'invest skills/wavehunter/reports/weekly_review_&lt;date&gt;.md',
+       'invest skills/usrocket/reports/&lt;date&gt;/premarket.md · postclose.md',
+       'invest skills/fattail/cards/*.md（11 张真实论点卡）'])}
+    ${pendingCard('反路演 / 饭局 / 出差调研 / 策略会', `
+      这几个本质是角色扮演流程，会归到<b>演绎层</b>并标「演练场景」，
+      发言素材换成缺口账本里真实的「市场观点 vs 一手证据」对立
+      （920 条市场说法 / 1163 条一手证据）。`,
+      ['knowledge/knowledge/wiki/_RESOLVED_GAPS.json'])}`;
 };
-
-function toast(msg){
-  const t = el('div','', msg);
-  t.style.cssText = `position:fixed;left:50%;bottom:34px;transform:translateX(-50%);z-index:9500;
-    background:var(--ink);color:var(--cream);padding:8px 14px;font-size:11px;font-weight:700`;
-  document.body.appendChild(t);
-  setTimeout(()=> t.remove(), 2200);
-}
 
 function openScene(s){
   SCENE.id = s.id; SCENE.paused = false; SCENE.skip = false; SCENE.seats = {}; SCENE.notes = {};

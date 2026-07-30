@@ -4,94 +4,16 @@
 
 /* ==========================================================================
    SECTION 13 — 研究员
-   战绩全部是编的。每张卡都带 DEMO 角标，页脚有免责。
-   滑块联动发言是纯查表：不接 LLM，保证每次拖都有反应、且可复现。
+   名册 100% 来自桥（公开层给身份与信条，机密层给战绩），每张卡都带 .real。
+   原来那套「查表发言 + 拖滑块改口」的假人已删：真策略的口径由它自己的 doctrine 定死。
    ========================================================================== */
-DATA.topic = '存储涨价能不能外溢到设备与材料';
+/* 这里以前写死了 8 个假研究员（含编出来的战绩/命中率/回撤）。已删。
+   名册现在来自 ~/invest skills 的 16 个真策略：
+     · 公开层  /api/roster_public — 身份、市场、风格、格言、信条、在岗状态（无数字）
+     · 机密层  /api/roster        — 净值、平仓统计、信任度、持仓建议
+   开局为空，由 real.js 的 applyRealRoster() 灌入。 */
+DATA.researchers = [];
 
-DATA.researchers = [
-  {id:'serenity', sp:'serenity', n:'Serenity', proto:'serenity skill · 卡脖子',
-   lv:14, xp:72, adopt:61, hit:48, mdd:-19, love:5, adopted:23, rejected:9,
-   aggr:8, indep:9, horizon:9,
-   factors:['卡脖子度','寡头集中','扩产周期','纯度/良率','地缘替代'],
-   motto:'绕不开的地方才有钱赚。',
-   say:{
-     hi:'涨价能传多远不重要。找绕不开的窄口：KrF 光刻胶只有两家过验证、扩产要 18 个月，这种地方我下重手。',
-     mid:'窄口逻辑成立，但只有一家真过了验证，二供还在小试。半仓，等第二家的验证公告。',
-     lo:'窄口在，估值已经含了预期。只给观察仓，等被证伪或者等回撤。'}},
-
-  {id:'tech', sp:'tech', n:'科技研究员', proto:'wavehunter + aidemand',
-   lv:17, xp:44, adopt:58, hit:52, mdd:-27, love:4, adopted:41, rejected:29,
-   aggr:7, indep:6, horizon:4,
-   factors:['增速二阶导','边际变化','渗透率曲线','新技术验证','产能利用率'],
-   motto:'一阶导人人都会看，钱在二阶导里。',
-   say:{
-     hi:'看二阶导：DDR5 现货周涨 3.1%，但涨幅的加速度已经掉头。真正在加速的是 HBM4 的良率修复，那才是下一段边际。',
-     mid:'一阶导还在上行，二阶导走平。设备端订单要到 Q4 才见反应，先跟不重仓。',
-     lo:'最猛的那段边际变化已经过去了。等下一个二阶导拐点再说。'}},
-
-  {id:'macro', sp:'macro', n:'宏观研究员', proto:'summary 宏观段',
-   lv:12, xp:88, adopt:44, hit:41, mdd:-12, love:3, adopted:17, rejected:22,
-   aggr:3, indep:7, horizon:8,
-   factors:['流动性','利率路径','政策脉冲','汇率','社融'],
-   motto:'先问是货币现象还是需求现象。',
-   say:{
-     hi:'流动性在放。这轮涨价本质是货币现象不是需求现象，顺着做，别纠结基本面。',
-     mid:'利率没动、社融偏弱。涨价更像供给收缩，别当需求复苏来定价。',
-     lo:'货币没配合。单靠涨价撑不起板块级行情，等政策脉冲落地再谈。'}},
-
-  {id:'consume', sp:'consume', n:'消费研究员', proto:'—',
-   lv:9, xp:31, adopt:39, hit:37, mdd:-15, love:3, adopted:11, rejected:18,
-   aggr:4, indep:5, horizon:6,
-   factors:['单店模型','复购率','渠道库存','提价传导','客单价'],
-   motto:'涨价传到终端就是杀量，看渠道不看新闻。',
-   say:{
-     hi:'涨价一定杀量，但这轮终端还没感知。模组厂提价后渠道还在补库，趁传导没到先做一段。',
-     mid:'渠道库存在涨，这是被动补库不是真实需求。等一个真实动销数据再判断。',
-     lo:'终端价格一动，量就掉。这条链的下游我不碰。'}},
-
-  {id:'growth', sp:'growth', n:'成长股研究员', proto:'goldpool',
-   lv:15, xp:19, adopt:67, hit:44, mdd:-34, love:4, adopted:38, rejected:19,
-   aggr:9, indep:3, horizon:2,
-   factors:['横截面动量','加速度','量能','拥挤度','龙头溢价'],
-   motto:'骑加速的那匹，绝不 fade 追高。',
-   say:{
-     hi:'谁在加速买谁，不做估值判断。这周材料端小盘的斜率最陡，直接上，破位再说。',
-     mid:'加速还在，但换手掉下来了。留半仓跟着走，斜率走平就撤。',
-     lo:'动量在衰减。这时候进场是接最后一棒，我不做。'}},
-
-  {id:'oldmoney', sp:'oldmoney', n:'老登股研究员', proto:'—',
-   lv:21, xp:63, adopt:29, hit:57, mdd:-8, love:4, adopted:14, rejected:31,
-   aggr:1, indep:8, horizon:10,
-   factors:['股息率','自由现金流','分红连续性','资本开支纪律','回购'],
-   motto:'不分红的成长都是叙事。',
-   say:{
-     hi:'涨价周期里我只看一件事：赚到的钱有没有变成分红。上游资源这轮现金流是真的，股息还能再抬。',
-     mid:'现金流改善了，但资本开支同步在扩，分红被摊薄。观望一个季度。',
-     lo:'赚的钱全砸回产能里了，股东一分没拿到。这种周期股我不参与。'}},
-
-  {id:'quant', sp:'quant', n:'量化研究员', proto:'factor / search_alpha',
-   lv:16, xp:55, adopt:52, hit:50, mdd:-14, love:4, adopted:26, rejected:24,
-   aggr:5, indep:9, horizon:7,
-   factors:['因子 IC','t 值','换手成本','拥挤度','regime 判别'],
-   motto:'t 值不到 1.96 的故事，我一个字都不听。',
-   say:{
-     hi:'涨价主题因子近 60 日 IC 0.07、t=2.3，显著。信号有效期约 3 周，按信号做，别加主观。',
-     mid:'IC 0.03、t=1.4，没过阈值。这个主题目前是叙事不是因子，只做小仓位试探。',
-     lo:'因子失效了，且换手成本吃掉全部超额。这条线上我给不出可交易信号。'}},
-
-  {id:'risk', sp:'risk', n:'风控官', proto:'brownsugar 三闸', veto:true,
-   lv:19, xp:77, adopt:100, hit:0, mdd:-6, love:5, adopted:52, rejected:0,
-   aggr:2, indep:10, horizon:5,
-   factors:['最大回撤','单票集中度','赚钱/亏钱效应','流动性','停牌风险'],
-   motto:'我不选股，我只决定谁不能上。',
-   say:{
-     hi:'今天亏钱效应还没扩散，闸放行。但单票上限 15%，谁都别想突破。',
-     mid:'集中度已经贴着上限。新仓位可以进，但要先砍掉一个旧的。',
-     lo:'亏钱效应在扩散，回撤闸触发。今天所有买入降级为观察，不接受申辩。'}}
-];
-
-/* 滑块的另两维通过后缀/前缀叠加，纯查表 */
 const HORIZON_TAIL = {
   short:'持有按周算，破位就走。',
   mid:'持有按月算，中途看一次证伪信号。',
@@ -118,27 +40,39 @@ function heartsHTML(n){
 
 RENDER.desk = function(){
   const scr = $('#scr-desk');
+  if(!DATA.researchers.length){
+    scr.innerHTML = `
+      <div class="screen-head"><h1>THE DESK</h1>
+        <span class="sub">16 名研究员 = ~/invest skills 里 16 套真在跑的策略</span></div>
+      ${win('名册还没加载', `<div class="t-sm" style="font-weight:700;line-height:1.9">
+          ${typeof REAL !== 'undefined' && REAL.pubErr
+            ? '连不上本地桥：<span class="t-rose">' + REAL.pubErr + '</span>'
+            : '正在读 ~/invest skills…'}</div>
+        <div class="t-xs t-dim" style="font-weight:700;margin-top:8px">
+          这里不会用写死的假研究员占位。</div>`, {color:'ink'})}`;
+    if(typeof loadPublic === 'function' && !REAL.pub)
+      loadPublic().then(ok=>{ if(ok && PANEL_OPEN === 'desk') RENDER.desk(); });
+    return;
+  }
   scr.innerHTML = `
     <div class="screen-head">
       <h1>THE DESK</h1>
-      <span class="sub">${typeof REAL !== 'undefined' && REAL.on
-        ? '每个研究员都是一套真在跑的策略 · 人设引自各自 doctrine 原文'
-        : '研究员 · 拧滑块就换方法论，发言实时变'}</span>
+      <span class="sub">每个研究员都是一套真在跑的策略 · 人设引自各自 doctrine 原文</span>
       <div class="tools">
         ${typeof realBanner === 'function' ? realBanner() : ''}
         ${typeof REAL !== 'undefined' && !REAL.on
           ? '<button class="px-btn" id="btnGoReal">⚿ 接入实盘名册</button>' : ''}
-        <button class="px-btn on dotted" id="btnGacha">⊕ 角色抽卡</button>
-        <button class="px-btn" id="btnNewR">＋ 自定义研究员</button>
-        <button class="px-btn ghost" id="btnResetR">↺ 恢复默认性格</button>
+        <button class="px-btn ghost" id="btnGacha" title="将改成从 216 条真实待验证信念里抽线索">⊕ 抽卡（待改造）</button>
       </div>
     </div>
-    ${typeof REAL !== 'undefined' && REAL.on ? realBoardHTML() : win('今日议题', `<div class="row wrap">
-        <span class="tag gold">TOPIC</span>
-        <b style="font-size:13px">${DATA.topic}</b>
-        <span class="sp"></span>
-        <span class="t-xs t-dim" style="font-weight:700">下面每个人的发言都是针对这一条议题 · 拖动滑块看他改口</span>
-      </div>`, {color:'ink'})}
+    ${typeof REAL !== 'undefined' && REAL.on ? realBoardHTML()
+      : win('研究部现状', `<div class="row wrap" style="gap:6px">
+          <span class="tag">公开层</span>
+          <span class="t-xs" style="font-weight:700">身份、市场、风格、信条都是真的（引自各策略 doctrine）；
+            净值、平仓统计、信任度、持仓建议需要老板钥匙。</span>
+          <span class="sp"></span>
+          <button class="px-btn sm" data-openvault="1">⚿ 输密码</button>
+        </div>`, {color:'ink'})}
     <div class="desk" id="deskGrid"></div>`;
 
   drawDesk();
@@ -147,39 +81,15 @@ RENDER.desk = function(){
     if(!realAuthed()) return openVault(()=>{});      /* 先转保险库拿钥匙 */
     loadReal(true).then(ok=> ok ? RENDER.desk() : toast('接不上：' + REAL.err));
   };
-  $('#btnGacha').onclick = openGacha;
-  $('#btnNewR').onclick = openNewResearcher;
-  $('#btnResetR').onclick = ()=>{ DATA.researchers.forEach(r=>{
-      const d = DEFAULT_PERSONA[r.id]; if(d){ r.aggr=d[0]; r.indep=d[1]; r.horizon=d[2]; }
-    }); drawDesk(); };
+  $('#btnGacha').onclick = ()=> toast('抽卡要改成从 216 条真实待验证信念里抽线索。改完再开 —— 现在不往名册里塞假人。');
 };
 
-/* ---- V2: 考核 / 模拟仓 / PIP / 外出状态（全部编造值，DEMO 角标） ---- */
-DATA.reviews = {
-  serenity:{hit:72, contrib:64, disc:88, rank:2, status:'在岗'},
-  tech:    {hit:66, contrib:78, disc:70, rank:1, status:'在岗'},
-  macro:   {hit:55, contrib:40, disc:82, rank:5, status:'在岗'},
-  consume: {hit:38, contrib:22, disc:60, rank:8, pip:true, status:'在岗'},
-  growth:  {hit:60, contrib:70, disc:34, rank:4, status:'外出调研'},
-  oldmoney:{hit:70, contrib:35, disc:96, rank:3, status:'在岗'},
-  quant:   {hit:62, contrib:58, disc:90, rank:6, status:'在岗'},
-  risk:    {hit:0,  contrib:0,  disc:100, rank:7, status:'在岗'}
-};
-function rNavSeries(id){
-  let s = 0; for(const ch of id) s = (s * 31 + ch.charCodeAt(0)) & 0x7fffffff;
-  const drift = (DATA.reviews[id]?.rank <= 3 ? .003 : DATA.reviews[id]?.pip ? -.002 : .0008);
-  let v = 100; const out = [];
-  for(let i = 0; i < 30; i++){
-    s = (s * 1103515245 + 12345) & 0x7fffffff;
-    v = v * (1 + drift + ((s / 0x7fffffff) - .5) * .028);
-    out.push(v);
-  }
-  return out;
-}
+/* 考核数据也不再预置 —— 由 applyRealRoster() 从真实账本填充。
+   rNavSeries 那套「固定种子随机漫步当净值」已删：净值只能来自 playbookex 真实序列。 */
+DATA.reviews = {};
 
 /* 记住出厂性格，方便一键还原 */
 const DEFAULT_PERSONA = {};
-DATA.researchers.forEach(r=> DEFAULT_PERSONA[r.id] = [r.aggr, r.indep, r.horizon]);
 
 function drawDesk(){
   const g = $('#deskGrid'); if(!g) return;
@@ -189,8 +99,7 @@ function drawDesk(){
   if(gone.length){
     g.insertAdjacentHTML('beforeend', win('前员工档案',
       gone.map(r=>`<div class="row" style="margin-bottom:6px;opacity:.6">${avatarHTML(r.sp,'s3')}
-        <div><b>${r.n}</b><div class="t-xs t-dim">${r.real ? r.real.status.why
-          : (r.id==='quant'?'跳槽城堡量化':'考核淘汰') + ' · 竞业条款 6 个月'}</div></div></div>`).join(''),
+        <div><b>${r.n}</b><div class="t-xs t-dim">${r.real.status.why || r.real.status.label}</div></div></div>`).join(''),
       {color:'ink', cls:'rcard', sub: gone.length + ' 人'}));
   }
   bindDesk();
@@ -202,36 +111,26 @@ function researcherCard(r){
     <div class="rhead">
       ${avatarHTML(r.sp,'s4')}
       <div>
-        <div class="rname">${r.n} ${r.real ? realStatusHTML(r) : rarityBadge(r)}${(typeof rLLMGet === 'function' && rLLMGet(r.id)?.key) ? ' <span class="tag cyan" title="自带专属 LLM">🧠</span>' : ''} ${r.veto?'<span class="tag rose">VETO</span>':''}</div>
+        <div class="rname">${r.n} ${realStatusHTML(r)}${(typeof rLLMGet === 'function' && rLLMGet(r.id)?.key) ? ' <span class="tag cyan" title="自带专属 LLM">🧠</span>' : ''} ${r.veto?'<span class="tag rose">VETO</span>':''}</div>
         <div class="rproto">${r.proto}</div>
       </div>
-      <div class="lv">LV.${r.lv}<br><span class="t-xs t-dim" title="${r.real?'LV = 平仓笔数与在册天数':'LV = 沉淀资料丰富度'}">${r.real?'资历':'沉淀度'}</span></div>
+      <div class="lv">${r.lv == null ? '—' : 'LV.' + r.lv}<br>
+        <span class="t-xs t-dim" title="平仓笔数与在册天数">${r.lv == null ? '需钥匙' : '资历'}</span></div>
     </div>
-    ${r.real ? realHpHTML(r)
-             : `<div class="px-bar thin mustard" style="margin-bottom:4px"><i style="width:${r.xp}%"></i></div>`}
+    ${realHpHTML(r)}
 
     <div class="row" style="margin:7px 0 0">
-      <span class="cap">战绩</span>${r.real ? realStatSrc(r) : '<span class="demo-mark">编造值</span>'}
+      <span class="cap">战绩</span>${realStatSrc(r)}
       <span class="sp"></span>
-      <span class="hearts" title="${r.real ? '信任度 '+r.real.hp : '你采纳了他 '+r.adopted+' 次，驳回 '+r.rejected+' 次'}">${heartsHTML(r.love)}</span>
+      <span class="hearts" title="${r.real.public ? '信任度需要钥匙' : '信任度 ' + r.real.hp}">${heartsHTML(r.love)}</span>
     </div>
-    ${r.real ? realStat3(r) : `<div class="stat3">
-      <div><div class="k">采纳率</div><div class="v">${r.adopt}%</div></div>
-      <div><div class="k">${r.veto?'否决数':'命中率'}</div><div class="v">${r.hit+'%'}</div></div>
-      <div><div class="k">最大回撤</div><div class="v t-rose">${r.mdd}%</div></div>
-    </div>`}
+    ${realStat3(r)}
 
-    <div class="sliders" data-r="${r.id}">
-      ${sliderRow(r,'aggr','保守','激进')}
-      ${sliderRow(r,'indep','随大流','独立')}
-      ${sliderRow(r,'horizon','短线','长线')}
-    </div>
+    <div class="cap" style="margin-bottom:4px">它自己写下的信条</div>
+    <div class="chips">${r.factors.map(f=>`<span class="chip on">${f}</span>`).join('')}</div>
 
-    <div class="cap" style="margin-bottom:4px">关注因子</div>
-    <div class="chips">${r.factors.map((f,i)=>`<span class="chip ${i<3?'on':''}">${f}</span>`).join('')}</div>
-
-    <div class="cap" style="margin:8px 0 6px">${r.real ? '最近一期怎么说' : '对今日议题的发言'}</div>
-    <div class="saybox" id="say-${r.id}">${r.real ? realSayHTML(r) : sayOf(r)}</div>
+    <div class="cap" style="margin:8px 0 6px">最近一期怎么说</div>
+    <div class="saybox" id="say-${r.id}">${realSayHTML(r)}</div>
     <div class="motto">「${r.motto}」</div>
     ${reviewBlock(r)}
     <div class="inbox" id="inbox-${r.id}">
@@ -244,41 +143,8 @@ function researcherCard(r){
 }
 
 function reviewBlock(r){
-  const rv = DATA.reviews[r.id];
-  if(!rv) return '';
-  if(r.real) return realReviewBlock(r);
-  if(r.gone) return '<div class="bridge" style="margin-top:8px">已跳槽至城堡量化 · 归档「前员工」</div>';
-  const nav = rNavSeries(r.id);
-  const last = nav[nav.length-1].toFixed(1);
-  const spark = typeof sparkHTML === 'function' && !r.veto
-    ? sparkHTML(nav, 250, 34, rv.pip ? 'var(--coral)' : 'var(--teal)') : '';
-  return `
-  <div style="border-top:3px dashed var(--ink);margin-top:8px;padding-top:7px">
-    ${trustBar(r.id)}
-    <div class="row" style="margin-top:6px">
-      <span class="cap">考核</span><span class="demo-mark">编造值</span>
-      <span class="tag ${rv.rank<=3?'gold':''}">#${rv.rank}</span>
-      ${rv.pip ? '<span class="tag rose">PIP 观察期</span>' : ''}
-      <span class="tag ${rv.status==='外出调研'?'cyan':''}">${rv.status}</span>
-      ${r.salaryUp ? '<span class="tag gold">已加薪</span>' : ''}
-      <span class="sp"></span>
-      ${r.veto ? '' : `<span class="t-xs" style="font-weight:700">模拟仓 ${last}</span>`}
-    </div>
-    ${r.veto ? '<div class="t-xs t-dim" style="font-weight:700;margin-top:4px">风控官不持仓：他的 KPI 是别人少亏的钱</div>' : `
-    <div style="margin:5px 0">${spark}</div>
-    <div class="stat3">
-      <div><div class="k">命中</div><div class="v">${rv.hit}</div></div>
-      <div><div class="k">贡献</div><div class="v">${rv.contrib}</div></div>
-      <div><div class="k">纪律</div><div class="v">${rv.disc}</div></div>
-    </div>`}
-    <div class="row" style="gap:4px">
-      ${rv.pip ? `<button class="px-btn sm danger" data-cull="${r.id}">模拟：季度考核</button>` : ''}
-      ${!r.veto && rv.status === '在岗' ? `<button class="px-btn sm ghost" data-fieldtrip="${r.id}">派出去调研</button>` : ''}
-    </div>
-    ${rv.pip ? '<div class="t-xs t-rose" style="font-weight:700;margin-top:4px">连续 2 季末位将触发淘汰评审</div>' : ''}
-  </div>`;
+  return realReviewBlock(r);
 }
-
 function sliderRow(r, key, lo, hi){
   return `<div class="sld">
     <span class="lo">${lo}</span>
@@ -288,16 +154,7 @@ function sliderRow(r, key, lo, hi){
 }
 
 function bindDesk(){
-  $$('.sliders').forEach(box=>{
-    const r = DATA.researchers.find(x=>x.id === box.dataset.r);
-    $$('input[type=range]', box).forEach(inp=>{
-      inp.oninput = ()=>{
-        r[inp.dataset.k] = +inp.value;
-        /* 真研究员的口径由 doctrine 定死，滑块不该改写它说过的话 */
-        $('#say-' + r.id).innerHTML = r.real ? realSayHTML(r) : sayOf(r);
-      };
-    });
-  });
+  /* 真策略的性格由它自己的 doctrine 文件定死，界面上没有可拖的滑块 */
   $$('.chip').forEach(c=> c.onclick = ()=> c.classList.toggle('on'));
   $$('[data-realdir]').forEach(b=> b.onclick = ()=>{
     const r = DATA.researchers.find(x=>x.id === b.dataset.realdir);
@@ -396,6 +253,7 @@ function openNewResearcher(){
       say:{ hi:base + ' 这个位置我敢重仓。', mid:base + ' 先做半仓看验证。', lo:base + ' 但我只给观察仓。' }
     };
     DEFAULT_PERSONA[r.id] = [r.aggr, r.indep, r.horizon];
+    return toast('自定义研究员会往名册里塞假人，已停用 —— 名册只放真在跑的策略。');
     DATA.researchers.push(r);
     closeModal(); drawDesk();
   };
@@ -445,6 +303,7 @@ DATA.reports = {
 function openResearcherPanel(id){
   const r = DATA.researchers.find(x=>x.id === id);
   if(!r) return;
+  if(r.pub) return toast('个人看板含净值与持仓建议，要老板钥匙');
   if(r.gone) return toast(r.n + ' 已离职。工位还空着，像个提醒');
   const rv = DATA.reviews[r.id] || {};
   PANEL_OPEN = 'r:' + id;
@@ -476,8 +335,8 @@ function openResearcherPanel(id){
               <div class="sld"><span class="lo">随大流</span><input type="range" min="1" max="10" value="${r.indep}" data-k="indep"><span class="hi">独立</span></div>
               <div class="sld"><span class="lo">短线</span><input type="range" min="1" max="10" value="${r.horizon}" data-k="horizon"><span class="hi">长线</span></div>
             </div>`}
-            <div class="cap" style="margin:4px 0">${r.real ? '最近一期怎么说' : '对今日议题的发言（拖滑块看他改口）'}</div>
-            <div class="saybox" id="say-${r.id}">${r.real ? realSayHTML(r) : sayOf(r)}</div>
+            <div class="cap" style="margin:4px 0">最近一期怎么说</div>
+            <div class="saybox" id="say-${r.id}">${realSayHTML(r)}</div>
             <div class="cap" style="margin:8px 0 4px">${r.real ? '它自己写下的信条' : '关注因子'}</div>
             ${r.real ? `<div class="t-xs" style="font-weight:700;line-height:1.9">
                 ${(r.real.creed || []).map(c=> '· ' + c).join('<br>')}</div>`
@@ -502,7 +361,7 @@ function openResearcherPanel(id){
           ${r.real ? realPortfolioHTML(r) : r.veto
             ? win('风控官不持仓', '<div class="t-sm" style="font-weight:700;line-height:1.8">他的 KPI 是别人少亏的钱。三道闸的判定记录见交易台 blotter。</div>', {color:'coral'})
             : win('模拟组合', `
-              <div class="row"><span class="cap">30 日纸面 NAV</span><span class="demo-mark">编造值</span>
+              <div class="row"><span class="cap">30 日纸面 NAV</span>
                 <span class="sp"></span><b style="font-size:15px">${nav ? nav[nav.length-1].toFixed(1) : '—'}</b></div>
               <div style="margin-top:8px">${nav && typeof sparkHTML === 'function' ? sparkHTML(nav, 560, 96, rv.pip ? 'var(--coral)' : 'var(--teal)') : ''}</div>
               <div class="stat3" style="max-width:340px;margin-top:9px">
@@ -535,7 +394,7 @@ function openResearcherPanel(id){
                                       : '公司资产，跳槽带不走'})}
         </div>
       </div>
-      <div class="panel-foot"><span class="demo-mark">DEMO</span> 战绩与报告评分为编造值。
+      <div class="panel-foot"><span class="tag cyan">实盘账本</span> 战绩取自 _PLATFORM 平仓账本与 playbookex 净值口径。
         <span class="sp"></span><span>里奇流资本 · 曲率即命运</span></div>
     </section>`;
   $('#panel').classList.add('open');
@@ -821,6 +680,7 @@ async function doPull(){
     <button class="px-btn ghost" id="passBtn">放回池子</button>`;
   $('#signBtn').onclick = ()=>{
     const id = 'g' + Date.now();
+    if(true) return toast('签约会往名册里塞假人，已停用。P5 改成抽真实信念线索。');
     DATA.researchers.push({id, sp:c.sp, n:c.n, proto:c.proto, rarity:c.tier,
       lv:c.lv, xp:10, adopt:0, hit:0, mdd:0, love:2, adopted:0, rejected:0,
       aggr:c.aggr, indep:c.indep, horizon:c.horizon, factors:c.factors,

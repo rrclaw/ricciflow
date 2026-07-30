@@ -83,6 +83,11 @@ function npcTalk(id){
 }
 
 function npcPoach(id){
+  /* 挖来的人是虚构的，名册只放真在跑的策略，所以这里不再写名册。
+     P5 会把 NPC 换成「化名 + 真实公开发言蒸馏」，那时再谈交换什么。 */
+  return toast('挖角会往名册里塞假人，已停用。名册只放 ~/invest skills 里真在跑的策略。');
+}
+function _deadNpcPoach(id){
   const npc = DATA.npcs[id];
   openModal(`
     <div class="win-bar" style="background:var(--coral)"><span>挖人谈判 · ${npc.poach.n}</span>

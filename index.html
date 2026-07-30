@@ -21,10 +21,10 @@
 <meta name="twitter:title" content="里奇流资本 · RICCI FLOW CAPITAL">
 <meta name="twitter:description" content="像素买方基金模拟经营 × AI 原生投研工作台。你当老板，AI 员工跑全链路。">
 <meta name="twitter:image" content="https://ricciflow.playbookex.com/assets/og.png">
-<link rel="manifest" href="manifest.webmanifest?v=1785394104">
-<link rel="icon" href="assets/icon.svg?v=1785394104" type="image/svg+xml">
-<link rel="stylesheet" href="src/styles.css?v=1785394104">
-<link rel="stylesheet" href="src/styles-game.css?v=1785394104">
+<link rel="manifest" href="manifest.webmanifest?v=1785399353">
+<link rel="icon" href="assets/icon.svg?v=1785399353" type="image/svg+xml">
+<link rel="stylesheet" href="src/styles.css?v=1785399353">
+<link rel="stylesheet" href="src/styles-game.css?v=1785399353">
 </head>
 <body>
 
@@ -42,7 +42,7 @@
   <span class="gt-loc" id="tbLoc">上海中心 68F · 老板办公室</span>
   <a class="gt-theme gt-gh" href="https://github.com/rrclaw/ricciflow" target="_blank" rel="noopener" title="开源仓库">★ GitHub</a>
   <button class="gt-theme" id="themeToggle" title="切换配色">◧ 配色</button>
-  <span class="gt-demo"><span class="demo-mark">DEMO</span></span>
+  <span class="gt-demo" id="tbState"></span>
 </div>
 
 <!-- ========== 底部 HUD 快捷栏 ========== -->
@@ -78,39 +78,47 @@
       <b>滚轮</b> 缩放 · <b>拖拽</b> 平移 · <b>0</b> 复位视角<br>
       <b>底部快捷栏</b> — 懒得走路时直接开
     </div>
+    <div class="guide-body" style="border-top:3px dashed var(--ink);margin-top:9px;padding-top:9px">
+      这里的数字都是真的，分三层：<br>
+      <b>公开层</b> — 知识库覆盖度、信源分布、灵感流，谁都能看<br>
+      <b>机密层</b> — 持仓、净值、薪资、纪要原文，要老板钥匙（点右上角状态条输密码）<br>
+      <b>演绎层</b> — 地图上的人物是化名，说的话来自真实公开发言并附出处<br>
+      <span style="opacity:.75">还没接线的地方会写「待接线」，不会拿编造值顶。</span>
+    </div>
     <button class="px-btn on dotted" id="guideOK" style="width:100%;margin-top:10px">开工（Enter）</button>
-    <div class="guide-foot"><span class="demo-mark">DEMO</span> 全部数据为虚构演示数据，不代表任何真实业绩 · <a href="https://github.com/rrclaw/ricciflow" target="_blank" rel="noopener" style="color:var(--ink);font-weight:700">开源：github.com/rrclaw/ricciflow</a></div>
+    <div class="guide-foot">读自本机 ~/knowledge 与 ~/invest skills · 每屏页脚写明出处 · <a href="https://github.com/rrclaw/ricciflow" target="_blank" rel="noopener" style="color:var(--ink);font-weight:700">开源：github.com/rrclaw/ricciflow</a></div>
   </div>
 </div>
 
 <!-- ========== 页脚免责（面板内可见） ========== -->
 
 <!-- 加载顺序即依赖顺序：零构建，file:// 可直开 -->
-<script src="src/core.js?v=1785394104"></script>
-<script src="src/engine/sprite.js?v=1785394104"></script>
-<script src="src/data/mock.js?v=1785394104"></script>
-<script src="src/components/desk.js?v=1785394104"></script>
-<script src="src/components/rack.js?v=1785394104"></script>
-<script src="src/components/atlas.js?v=1785394104"></script>
-<script src="src/components/scenes.js?v=1785394104"></script>
-<script src="src/components/settings.js?v=1785394104"></script>
-<script src="src/components/research.js?v=1785394104"></script>
-<script src="src/components/trading.js?v=1785394104"></script>
-<script src="src/components/daily.js?v=1785394104"></script>
-<script src="src/components/guandan.js?v=1785394104"></script>
-<script src="src/components/phone.js?v=1785394104"></script>
-<script src="src/components/finance.js?v=1785394104"></script>
-<script src="src/components/buildings.js?v=1785394104"></script>
-<script src="src/components/real.js?v=1785394104"></script>
-<script src="src/components/insight.js?v=1785394104"></script>
-<script src="src/components/inquiry.js?v=1785394104"></script>
-<script src="src/llm/provider.js?v=1785394104"></script>
-<script src="src/notify/notify.js?v=1785394104"></script>
-<script src="src/engine/tile.js?v=1785394104"></script>
-<script src="src/engine/walk.js?v=1785394104"></script>
-<script src="src/world/office.js?v=1785394104"></script>
-<script src="src/world/floors.js?v=1785394104"></script>
-<script src="src/world/citymap.js?v=1785394104"></script>
-<script src="src/ui/shell.js?v=1785394104"></script>
+<script src="src/core.js?v=1785399353"></script>
+<script src="src/engine/sprite.js?v=1785399353"></script>
+<script src="src/data/mock.js?v=1785399353"></script>
+<script src="src/components/desk.js?v=1785399353"></script>
+<script src="src/components/rack.js?v=1785399353"></script>
+<script src="src/components/atlas.js?v=1785399353"></script>
+<script src="src/components/scenes.js?v=1785399353"></script>
+<script src="src/components/settings.js?v=1785399353"></script>
+<script src="src/components/research.js?v=1785399353"></script>
+<script src="src/components/trading.js?v=1785399353"></script>
+<script src="src/components/daily.js?v=1785399353"></script>
+<script src="src/components/guandan.js?v=1785399353"></script>
+<script src="src/components/phone.js?v=1785399353"></script>
+<script src="src/components/finance.js?v=1785399353"></script>
+<script src="src/components/buildings.js?v=1785399353"></script>
+<script src="src/components/locked.js?v=1785399353"></script>
+<script src="src/components/real.js?v=1785399353"></script>
+<script src="src/components/insight.js?v=1785399353"></script>
+<script src="src/components/inquiry.js?v=1785399353"></script>
+<script src="src/llm/provider.js?v=1785399353"></script>
+<script src="src/notify/notify.js?v=1785399353"></script>
+<script src="src/engine/tile.js?v=1785399353"></script>
+<script src="src/engine/walk.js?v=1785399353"></script>
+<script src="src/world/office.js?v=1785399353"></script>
+<script src="src/world/floors.js?v=1785399353"></script>
+<script src="src/world/citymap.js?v=1785399353"></script>
+<script src="src/ui/shell.js?v=1785399353"></script>
 </body>
 </html>
