@@ -92,6 +92,27 @@ def peek(n=6):
     }
 
 
+def series_list():
+    """白名单序列目录。get_series 不带参数就返回可选清单，这是服务端刻意的设计
+    （没有任意查询工具，避免把 databank 直通出去）。"""
+    def go():
+        d = call_tool("get_series")
+        txt = d.get("text") or ""
+        # 无参调用返回的是「# Call again with…」+ 一段 JSON，切出 JSON 再解
+        i = txt.find("{")
+        if i >= 0:
+            try:
+                return json.loads(txt[i:]).get("available", [])
+            except Exception:
+                pass
+        return d.get("available", []) if isinstance(d, dict) else []
+    return _cached("series_list", lambda: go())
+
+
+def series(sid):
+    return call_tool("get_series", {"series_id": sid})
+
+
 def probe():
     """健康探针：工具数 + 覆盖公司数 + 数据日期。"""
     try:

@@ -196,6 +196,25 @@ class H(http.server.BaseHTTPRequestHandler):
                 return self._send(200, {"ok": False, "error": "该源无 peek"})
             except Exception as e:
                 return self._send(200, {"ok": False, "error": str(e)})
+        if u.path == "/api/arr":
+            # 自建 ARR Tracker 的 MCP：工具目录 / 白名单序列 / 单条序列
+            try:
+                import arrmcp
+                what = (q.get("what") or ["tools"])[0]
+                if what == "tools":
+                    return self._send(200, {"ok": True, "tools": [
+                        {"name": t.get("name"), "title": t.get("title"),
+                         "desc": (t.get("description") or "")[:220]} for t in arrmcp.tools()]})
+                if what == "series_list":
+                    return self._send(200, {"ok": True, "series": arrmcp.series_list()})
+                if what == "series":
+                    sid = (q.get("id") or [""])[0]
+                    if not sid:
+                        return self._send(400, {"ok": False, "error": "缺 id"})
+                    return self._send(200, {"ok": True, **arrmcp.series(sid)})
+                return self._send(200, {"ok": False, "error": "what 只认 tools/series_list/series"})
+            except Exception as e:
+                return self._send(200, {"ok": False, "error": str(e)})
         if u.path == "/api/realtime_probe":
             try:
                 import realtime
@@ -321,7 +340,14 @@ def _warm():
         if distill: distill.insight_daily()
         print("[warm] insight 缓存已预热")
     except Exception as e:
-        print("[warm] 预热失败:", e)
+        print("[warm] insight 预热失败:", e)
+    # arr MCP 冷启一次要好几秒（两跳），预热掉，点「测试连接」就是毫秒级
+    try:
+        import arrmcp
+        p = arrmcp.probe()
+        print(f"[warm] arr MCP: {p}")
+    except Exception as e:
+        print("[warm] arr MCP 预热失败:", e)
 
 if __name__ == "__main__":
     DOCS = load()

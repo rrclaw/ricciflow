@@ -272,6 +272,21 @@ function sourceConfigHTML(s){
         例：doomberg.substack.com/feed</div>
       <button class="px-btn sm" id="cfgSubSave" style="margin-top:8px">保存 RSS</button>`;
   }
+  if(s.id === 'arr_mcp'){
+    /* 自建服务端，没有 key 要填。给的是「它到底能取什么」——真去问服务端拿工具目录 */
+    return `<hr class="hr" style="margin:13px 0 11px">
+      <div class="field"><label>端点</label>
+        <input class="inp" value="https://arr.polyalpha.cn/mcp" readonly></div>
+      <div class="bridge" style="margin-bottom:8px">
+        手写规范（2026-07-28），比通用 MCP 多两条硬要求：<code>Mcp-Method</code> 每请求必带、
+        <code>Mcp-Name</code> 只在 tools/call 带，且 body 的 <code>_meta</code> 协议版本要与请求头一致。
+        不满足直接 -32020，不静默降级。只读匿名，无 key。</div>
+      <div class="row" style="gap:6px">
+        <button class="px-btn sm" id="arrTools">▸ 拉工具目录</button>
+        <button class="px-btn sm" id="arrSeries">▸ 拉白名单序列</button>
+      </div>
+      <div id="arrOut" style="margin-top:9px"></div>`;
+  }
   if(s.id === 'reddit'){
     return `<hr class="hr" style="margin:13px 0 11px">
       <div class="field"><label>CLIENT ID</label>
@@ -300,6 +315,9 @@ function bindSourceConfig(s){
     save('substack', {urls}); s.on = true; RENDER.sources(); openSourceDrawer('substack');
     toast('已保存 '+urls.length+' 个 RSS。测试连接看抓取');
   };
+  const at = $('#arrTools'), asr = $('#arrSeries');
+  if(at) at.onclick = ()=> arrFetch('tools');
+  if(asr) asr.onclick = ()=> arrFetch('series_list');
   const red = $('#cfgRedSave');
   if(red) red.onclick = ()=>{
     const prev = srcCfg('reddit');
@@ -370,7 +388,7 @@ async function runLiveSourceTest(s, log){
     line.textContent = '\n  · ' + String(it.topic || it.title || '').slice(0, 46) + tail;
     log.appendChild(line);
   });
-  s.on = true; s.today = d.items.length;
+  s.on = true; s.today = d.items.length; s._live = d.items.length;
   drawCarts(); drawRackStat();
   const card = $(`.cart[data-id="${s.id}"]`);
   if(card){ card.classList.add('flash'); setTimeout(()=>card.classList.remove('flash'), 500); }
@@ -404,3 +422,47 @@ function syncTopbar(){
   $('#tbSrc').textContent = srcCount() + '/' + DATA.sources.length;
 }
 
+
+/* 现去问 arr 的 MCP 服务端要东西。返回什么就显示什么，拉不到就说拉不到。 */
+async function arrFetch(what, sid){
+  const out = $('#arrOut'); if(!out) return;
+  out.innerHTML = '<div class="t-xs t-dim" style="font-weight:700">请求中…</div>';
+  let d;
+  try{
+    const qs = '?what=' + what + (sid ? '&id=' + encodeURIComponent(sid) : '') +
+      (typeof VAULT !== 'undefined' && VAULT.key ? '&key=' + encodeURIComponent(VAULT.key) : '');
+    d = await (await fetch(BRIDGE + '/api/arr' + qs, {signal:AbortSignal.timeout(25000)})).json();
+  }catch(e){ d = {ok:false, error:String(e.message || e)}; }
+  if(!d || !d.ok){
+    out.innerHTML = `<div class="t-sm t-rose" style="font-weight:700">拉不到：${(d && d.error) || '未知'}</div>`;
+    return;
+  }
+  if(what === 'tools'){
+    out.innerHTML = `<div class="cap" style="margin-bottom:5px">${d.tools.length} 个工具（服务端现报）</div>` +
+      d.tools.map(t=>`<div class="gap-item">
+        <div class="gt"><span class="tag cyan">${t.name}</span><span>${t.title || ''}</span></div>
+        <div class="why">${t.desc || ''}</div></div>`).join('');
+    return;
+  }
+  if(what === 'series_list'){
+    out.innerHTML = `<div class="cap" style="margin-bottom:5px">${d.series.length} 条白名单序列 · 点开取真值</div>` +
+      d.series.map(s=>`<div class="gap-item" style="cursor:pointer" data-arrsid="${s.series_id}">
+        <div class="gt"><span class="tag">${s.series_id}</span></div>
+        <div class="why">${s.description || ''}</div></div>`).join('');
+    $$('#arrOut [data-arrsid]').forEach(b=> b.onclick = ()=> arrFetch('series', b.dataset.arrsid));
+    return;
+  }
+  /* 单条序列：把最后几个点摊出来，看得见就是真的 */
+  const rows = (d.data && d.data.series) || d.series || [];
+  const tail = rows.slice(-6);
+  const keys = tail.length ? Object.keys(tail[0]) : [];
+  out.innerHTML = `<div class="cap" style="margin-bottom:5px">${d.series_id} · 共 ${rows.length} 点</div>
+    <div class="t-xs t-dim" style="font-weight:700;margin-bottom:6px">${d.description || ''}</div>
+    <div style="overflow:auto"><table style="width:100%;font-size:10.5px;border-collapse:collapse">
+      <tr style="font-weight:700;color:var(--dim)">${keys.map(k=>`<td>${k}</td>`).join('')}</tr>
+      ${tail.map(r=>`<tr style="border-top:2px dotted rgba(63,43,35,.25)">
+        ${keys.map(k=>`<td>${r[k] ?? '—'}</td>`).join('')}</tr>`).join('')}
+    </table></div>
+    <button class="px-btn sm ghost" id="arrBack" style="margin-top:8px">← 回序列清单</button>`;
+  const bk = $('#arrBack'); if(bk) bk.onclick = ()=> arrFetch('series_list');
+}

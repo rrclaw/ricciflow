@@ -444,6 +444,10 @@ function realSrcCount(id){
 function realCartMeta(s){
   const r = realSrcCount(s.id);
   if(!r) return `<span>今日 <b class="t-gold">${s.today}</b> 条</span>`;
+  /* 实时源不进知识库是设计，不是缺陷 —— 它们的真数在上游，测一次连接就现出来 */
+  if(s.live) return s._live
+    ? `<span title="上一次真实拉取">上游 <b class="t-gold">${s._live}</b> 条</span>`
+    : '<span class="t-cyan" title="不入知识库，数在上游。点开卡带测试连接可现拉">实时源 · 可现拉</span>';
   if(r.n == null) return `<span class="t-dim" title="${r.why}">未留痕</span>`;
   return `<span title="${r.why}">在册 <b class="t-gold">${r.n.toLocaleString()}</b> 份</span>`;
 }
