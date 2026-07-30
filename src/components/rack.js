@@ -335,11 +335,19 @@ async function runSourceTest(s){
   const log = $('#testLog'); if(!log) return;
   const btn = $('#btnTest'); btn.disabled = true;
   log.innerHTML = '';
+  /* 实时源失败就让失败站着。绝不能在真实报错后面再演一遍「握手 ✓ 拉取样本 ✓」，
+     那是假成功，比没结果更糟。演示脚本只留给本来就没接上游的源。 */
   if(s.live){
     const ok = await runLiveSourceTest(s, log);
     btn.disabled = false;
-    if(ok) return;
-    await typeInto(log, '\n> 回落演示脚本（真实拉取不可用）…', 11);
+    if(!ok){
+      const tip = document.createElement('span');
+      tip.className = 'er';
+      tip.textContent = '\n> 这个源现在拿不到数据。上面是真实报错，没有演示回落。';
+      log.appendChild(tip);
+      s.on = false; drawCarts(); drawRackStat();
+    }
+    return;
   }
   const lines = [
     ['握手 ' + (s.auth === '无' ? '(免认证)' : '(' + s.auth + ')') + '…', ' ✓'],
@@ -380,7 +388,13 @@ async function runLiveSourceTest(s, log){
     log.innerHTML += '<span class="er"> ' + ((d && d.error) || '无数据') + '</span>';
     return false;
   }
-  log.innerHTML += '<span class="ok"> ✓ ' + d.items.length + ' 条' + (d.as_of ? ' · ' + d.as_of : '') + '</span>';
+  log.innerHTML += '<span class="ok"> ✓ ' + d.items.length + ' 条' +
+    (d.as_of ? ' · ' + d.as_of : '') + (d.elapsed ? ' · ' + d.elapsed + 's' : '') + '</span>';
+  if(d.note){
+    const nl = document.createElement('span');
+    nl.textContent = '\n  ' + d.note;
+    log.appendChild(nl);
+  }
   d.items.forEach(it=>{
     const tail = it.arr != null ? '  ARR $' + it.arr + 'B · ' + (it.mult != null ? it.mult + 'x' : '—')
                : it.date ? '  ' + it.date : '';

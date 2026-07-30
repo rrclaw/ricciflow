@@ -13,7 +13,8 @@ DATA.groups = [
   {k:'quote',  n:'行情 & 基础', tag:'QUOTE'},
   {k:'news',   n:'新闻 & 公告', tag:'NEWS'},
   {k:'expert', n:'专家 & 卖方', tag:'EXPERT'},
-  {k:'sub',    n:'订阅 & 社群', tag:'SUBSCRIPTION'}
+  {k:'sub',    n:'订阅 & 社群', tag:'SUBSCRIPTION'},
+  {k:'free',   n:'免费公开接口', tag:'FREE / OPEN'}
 ];
 
 DATA.sources = [
@@ -43,6 +44,14 @@ DATA.sources = [
   {id:'tmtbreakout',n:'TMT Breakout',        g:'sub',   t:'RSS',      freq:'日更',     conf:4, fresh:0,  today:4,    auth:'无', bucket:'research_assets', on:true,  live:true, note:'美股科技投研前沿 substack。Morning/EOD Wrap 覆盖当日要闻。灵感流实时源。'},
   {id:'reddit',     n:'Reddit',              g:'sub',   t:'OAuth API', freq:'实时',      conf:2, fresh:0,  today:0,    auth:'OAuth key', bucket:'personal_assets', on:false, note:'散户情绪风向。免费：reddit.com/prefs/apps 建 script app 拿 client_id+secret，填这里即接通（100 QPM 免费）。'},
   {id:'epoch',      n:'Epoch AI',            g:'sub',   t:'公开CSV',   freq:'日更',     conf:5, fresh:0,  today:6,    auth:'无', bucket:'research_assets', on:true,  live:true, note:'epoch.ai 权威 AI 模型/GPU集群规模数据集（公开 CSV 适配器）。灵感流前沿模型时间线。真接通。'},
+  /* ─── 免费公开接口：全部装在本机，状态不写死，「测试连接」真去拉一条最近数据 ───
+     这一组的通病是「装得上不代表还活着」：证券宝可能停更、通达信免费服务器一批批
+     失联、问财 token 规则常改。所以卡上的置信只反映「数据质量上限」，
+     能不能用当场探。 */
+  {id:'baostock',   n:'证券宝 baostock',      g:'free', t:'Python 库', freq:'日频',   conf:3, fresh:1, today:0, auth:'无（匿名登录）', bucket:'—', on:false, live:true, note:'免费 A 股日线/分钟线/财务，无需注册，本机已装 0.8.9。本机实测：baostock.com:10030 端口是开的，但 login() 一直不返回（挂死，库本身没有超时），探针只能靠外部超时判失败。想用得先解决这个握手问题。'},
+  {id:'pytdx',      n:'通达信行情 pytdx',     g:'free', t:'TCP 协议',  freq:'实时',   conf:3, fresh:0, today:0, auth:'无', bucket:'—', on:true, live:true, note:'直连通达信免费行情服务器，实时五档/逐笔/K线，本机已装 1.72。本机实测通：前两台失联，第三台 180.153.18.170 活着，取回茅台与平安现价。库多年不维护，探针会逐台试并报出哪台还活着。'},
+  {id:'efinance',   n:'东方财富 efinance',    g:'free', t:'HTTP',     freq:'实时/日频', conf:3, fresh:0, today:0, auth:'无', bucket:'—', on:false, live:true, note:'东财公开接口封装，A股/港股/美股/基金/ETF 全覆盖，还能取资金流与龙虎榜，本机已装 0.5.8。本机实测不通：push2his.eastmoney.com 连不上（挂代理和不挂代理都是 000），是网络可达性问题不是库的问题。'},
+  {id:'pywencai',   n:'同花顺问财 pywencai',  g:'free', t:'HTTP',     freq:'实时',   conf:2, fresh:0, today:0, auth:'无（token 自动获取）', bucket:'—', on:false, live:true, note:'自然语言选股（「今日涨幅前5」直接问），summary 用它取主题热度，本机已装 0.13.1。本机实测被拦：库内部拿不到 token 直接抛 NoneType。问财反爬策略常改，这种失败是常态不是故障，噪声也高，只配做线索。'},
   {id:'arr_mcp',    n:'ARR Tracker（自建 MCP）', g:'quote', t:'MCP', freq:'日更', conf:5, fresh:0, today:7, auth:'无', bucket:'research_assets', on:true, live:true, note:'arr.polyalpha.cn/mcp — 自家的前沿实验室收入追踪器。6 个工具：公司 ARR 现值/收入密度/供需勾稽/需求二阶导/白名单序列。只读匿名，无 key。真接通。'},
   {id:'ramp',       n:'Ramp 消费数据',       g:'expert',t:'待接入',    freq:'—',        conf:4, fresh:0,  today:0,    auth:'企业账号', bucket:'research_assets', on:false, locked:true, note:'企业支付/消费 spending-side 数据。核实：无公开数据 API（ramp.com/api 404），需企业账号授权，暂无法接入。'}
 ];

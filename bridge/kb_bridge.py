@@ -181,6 +181,11 @@ class H(http.server.BaseHTTPRequestHandler):
             sid = (q.get("id") or [""])[0]
             try:
                 import realtime
+                if sid in ("baostock", "pytdx", "efinance", "pywencai"):
+                    # 免费接口：真去拉一条最近数据，活着还是死了当场见分晓
+                    import freeapi
+                    return self._send(200, freeapi.probe(
+                        sid, force=(q.get("force") or ["0"])[0] == "1"))
                 if sid == "arr_mcp":
                     import arrmcp
                     return self._send(200, arrmcp.peek(7))
