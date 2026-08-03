@@ -283,6 +283,13 @@ class H(http.server.BaseHTTPRequestHandler):
                 return self._send(200, kbreal.wiki_page(slug))
             except Exception as e:
                 return self._send(200, {"ok": False, "error": str(e)})
+        if u.path == "/api/session":
+            # 晨会 / 复盘：各策略观点原文汇总 + 可并排比的分歧
+            try:
+                import views
+                return self._send(200, views.session((q.get("which") or ["morning"])[0]))
+            except Exception as e:
+                return self._send(200, {"ok": False, "error": str(e)})
         if u.path == "/api/pipeline":
             # 研究流水线：真实课题生命周期（信念账本 + 待入库 + 缺口 + 今日锁仓 + 在仓）
             try:

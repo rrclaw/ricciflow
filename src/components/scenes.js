@@ -120,30 +120,155 @@ function setStep(i){
   });
 }
 
+/* ==========================================================================
+   晨会 / 复盘 —— 各研究员观点的原文汇总
+   每段都是该策略自己文件里的原话，标了出处。分歧并列，不合并不裁决。
+   综合摘要由本地 Claude 跑并落盘，网站只读不代笔。
+   ========================================================================== */
+let WAR_WHICH = 'morning';
+const WAR = {morning:null, evening:null, err:'', loading:false};
+
+async function loadSession(which, force){
+  if(WAR.loading) return !!WAR[which];
+  if(WAR[which] && !force) return true;
+  if(!realAuthed()){ WAR.err = '需要老板钥匙'; return false; }
+  WAR.loading = true;
+  try{
+    const d = await (await fetch(BRIDGE + '/api/session?which=' + which +
+      '&key=' + encodeURIComponent(VAULT.key), {signal:AbortSignal.timeout(40000)})).json();
+    if(!d || !d.ok) throw new Error(d && d.error || '空响应');
+    WAR[which] = d; WAR.err = '';
+  }catch(e){ WAR.err = String(e.message || e); WAR[which] = null; }
+  finally{ WAR.loading = false; }
+  return !!WAR[which];
+}
+
 RENDER.war = function(){
   const scr = $('#scr-war');
-  /* 晨会/复盘要的是「各研究员观点的总结和精华」，素材是每个策略自己落盘的
-     观点段与反思段。那批解析器还没写，所以这里明说没接，不用剧本顶。 */
-  scr.innerHTML = `
-    <div class="screen-head"><h1>场景 · WAR ROOM</h1>
-      <span class="sub">晨会与复盘 = 各策略观点原文的汇总，不是剧本</span></div>
-    ${pendingCard('晨会 · 各研究员观点精华', `
-      晨会要并排放每个策略<b>自己文件里的观点原文</b>：今日锁仓结果与空仓理由、
-      各自 doctrine 立场、以及分歧点（同一标的被两家给出相反判断时并列，不合并不裁决）。<br>
-      复盘要放今日真实净值变化、今日真实平仓、以及各策略自己写的反思段。<br>
-      <span class="t-dim">综合摘要由本地 Claude 跑出文件，网站只读文件 —— 网站不做提炼。</span>`,
-      ['invest skills/brownsugar/reports/&lt;date&gt;/report.md · self_reflection_16.md',
-       'invest skills/serenity/reports/&lt;date&gt;/_autolock_report.md · 3run.json',
-       'invest skills/wavehunter/reports/weekly_review_&lt;date&gt;.md',
-       'invest skills/usrocket/reports/&lt;date&gt;/premarket.md · postclose.md',
-       'invest skills/fattail/cards/*.md（11 张真实论点卡）'])}
-    ${pendingCard('反路演 / 饭局 / 出差调研 / 策略会', `
-      这几个本质是角色扮演流程，会归到<b>演绎层</b>并标「演练场景」，
-      发言素材换成缺口账本里真实的「市场观点 vs 一手证据」对立
-      （920 条市场说法 / 1163 条一手证据）。`,
-      ['knowledge/knowledge/wiki/_RESOLVED_GAPS.json'])}`;
+  if(!realAuthed()){
+    scr.innerHTML = `
+      <div class="screen-head"><h1>晨会 / 复盘 · WAR ROOM</h1>
+        <span class="sub">各研究员观点的原文汇总，不是剧本</span></div>
+      ${lockedCard('晨会与复盘', `
+        晨会并排放每个策略<b>自己文件里那段观点</b>：对大势的判断、今天锁了什么、
+        没锁的话理由原文是什么。复盘放它们自己写的反思段。<br>
+        观点带标的和仓位，所以整块属于机密层。`,
+        ['invest skills/brownsugar/reports/&lt;date&gt;/report.md · self_reflection_16.md',
+         'invest skills/serenity/reports/&lt;date&gt;/_autolock_report.md',
+         'invest skills/wavehunter/reports/weekly_review_&lt;date&gt;.md',
+         'invest skills/usrocket/reports/&lt;date&gt;/premarket.md · retrospect.md'])}`;
+    return;
+  }
+  const D = WAR[WAR_WHICH];
+  if(!D){
+    scr.innerHTML = `<div class="screen-head"><h1>晨会 / 复盘 · WAR ROOM</h1>
+        <span class="sub">正在读各策略观点原件…</span></div>
+      ${win('读取中', `<div class="t-sm" style="font-weight:700">${
+        WAR.err ? '读不到：<span class="t-rose">' + WAR.err + '</span>' : '正在读…'}</div>`, {color:'ink'})}`;
+    if(!WAR.err) loadSession(WAR_WHICH).then(ok=>{ if(PANEL_OPEN === 'scenes') RENDER.war(); });
+    return;
+  }
+  drawWar(scr, D);
 };
 
+function drawWar(scr, D){
+  const C = D.compare || {};
+  const seg = (label, arr, cls)=> arr && arr.length
+    ? `<div class="row wrap" style="gap:5px;margin-bottom:5px">
+        <span class="cap" style="min-width:52px">${label}</span>
+        ${arr.map(x=>`<span class="tag ${cls}" title="${(x.why || '').replace(/"/g,'&quot;')}">${
+          x.n}${x.regime ? ' ' + x.regime : ''}${x.n_picks ? ' ×' + x.n_picks : ''}</span>`).join('')}
+      </div>` : '';
+
+  scr.innerHTML = `
+    <div class="screen-head">
+      <h1>${WAR_WHICH === 'morning' ? '晨会' : '复盘'} · WAR ROOM</h1>
+      <span class="sub">${D.note}</span>
+      <div class="tools">
+        <button class="px-btn ${WAR_WHICH==='morning'?'on':''}" data-war="morning">☀ 晨会</button>
+        <button class="px-btn ${WAR_WHICH==='evening'?'on':''}" data-war="evening">☾ 复盘</button>
+        <button class="px-btn ghost" id="warReload">↻ 重读</button>
+      </div>
+    </div>
+
+    ${win('分歧一览 · 并列不裁决', `
+      ${seg('大势', C.regimes, 'gold')}
+      ${seg('有仓', C.loaded, 'cyan')}
+      ${seg('空仓', C.cash, '')}
+      ${C.overlap && C.overlap.length
+        ? `<div class="row wrap" style="gap:5px"><span class="cap" style="min-width:52px">同票</span>
+            ${C.overlap.map(o=>`<span class="tag rose" title="${o.holders}">${o.name} ${o.gross}</span>`).join('')}</div>`
+        : '<div class="t-xs t-dim" style="font-weight:700">同票重叠 0 —— 今天没有两家买到一块去</div>'}
+      <div class="t-xs t-dim" style="font-weight:700;margin-top:8px;line-height:1.7">
+        空仓的把理由挂在角标上（鼠标悬停看原文）。谁对谁错这里不判 ——
+        并排放着，你自己看。</div>`, {color:'ink', sub:'能直接比的三样'})}
+
+    ${D.synth.ok
+      ? win('综合摘要 · 本地 Claude 产出', `<div class="minutes" style="font-size:11px;line-height:1.9;
+          max-height:300px;overflow:auto">${mdLite(D.synth.text)}</div>
+          <div class="t-xs t-dim" style="font-weight:700;margin-top:6px">${D.synth.path}</div>`,
+          {color:'gold', sub:'网站只读，不代笔'})
+      : win('综合摘要还没跑', `<div class="t-sm" style="font-weight:700;line-height:1.9">
+          ${D.synth.hint}</div>
+          <div class="t-xs t-dim" style="font-weight:700;margin-top:6px">
+            约定路径 <code>${D.synth.path}</code></div>
+          <div class="bridge" style="margin-top:9px">
+            下面每一段都是各策略自己写的原话。要一份把它们揉在一起的判断，
+            得本地跑一次 —— 网站不替谁总结。</div>`, {color:'ink'})}
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;align-items:start">
+      ${D.views.map(v=> warCard(v)).join('')}
+    </div>`;
+  $$('[data-war]').forEach(b=> b.onclick = ()=>{
+    WAR_WHICH = b.dataset.war;
+    RENDER.war();
+    if(!WAR[WAR_WHICH]) loadSession(WAR_WHICH).then(()=> RENDER.war());
+  });
+  const rl = $('#warReload');
+  if(rl) rl.onclick = ()=> loadSession(WAR_WHICH, true).then(()=> RENDER.war());
+}
+
+function warCard(v){
+  const V = v.view || {};
+  const p = v.picks || {};
+  const head = `
+    <div class="row wrap" style="gap:5px;margin-bottom:7px">
+      <span class="tag">${v.market}</span>
+      ${p.regime ? `<span class="tag gold">${p.regime}</span>` : ''}
+      ${p.n ? `<span class="tag cyan">锁了 ${p.n} 只</span>` : '<span class="tag">空仓</span>'}
+      <span class="sp"></span>
+      <span class="t-xs t-dim" style="font-weight:700">${v.date || '—'}</span>
+    </div>
+    <div class="motto" style="margin-bottom:7px">「${v.motto}」
+      <span class="t-xs t-dim">引自 ${v.src_doc}</span></div>`;
+
+  if(!V.ok){
+    return win(v.n, head + `
+      <div class="t-sm t-rose" style="font-weight:700;line-height:1.8">${V.error}</div>
+      ${(V.available || []).length ? `<div class="t-xs t-dim" style="font-weight:700;margin-top:6px;line-height:1.7">
+        那天实际落盘的是：${V.available.join('、')}</div>` : ''}
+      ${p.note ? `<div class="bridge" style="margin-top:8px">空仓理由（原文）· ${p.note}</div>` : ''}`,
+      {color:'ink', sub:'这一期没写观点文件'});
+  }
+  return win(v.n, head + `
+    <div style="font-size:11px;font-weight:700;line-height:1.6;margin-bottom:6px">${V.title}</div>
+    ${V.lede ? `<div class="minutes" style="font-size:10.5px;line-height:1.85;max-height:150px;overflow:auto">${
+      mdLite(V.lede)}</div>` : ''}
+    ${V.raw ? `<div class="minutes" style="font-size:10.5px;line-height:1.85;max-height:190px;overflow:auto">${
+      mdLite(V.raw)}</div>` : ''}
+    ${(V.sections || []).map(s=>`
+      <details style="margin-top:6px">
+        <summary class="cap" style="cursor:pointer">${s.title}</summary>
+        <div class="minutes" style="font-size:10px;line-height:1.85;max-height:220px;overflow:auto;margin-top:4px">${
+          mdLite(s.body)}</div></details>`).join('')}
+    ${p.top && p.top.length ? `<div class="t-xs" style="font-weight:700;margin-top:7px">
+      今日：${p.top.map(x=> (x.name || x.ticker) + (x.weight != null ? ' ' + (x.weight*100).toFixed(1) + '%' : '')).join('、')}</div>` : ''}
+    ${!p.n && p.note ? `<div class="bridge" style="margin-top:7px">空仓理由（原文）· ${p.note}</div>` : ''}
+    <div class="t-xs t-dim" style="font-weight:700;margin-top:7px">${V.file}</div>`,
+    {color: p.n ? 'teal' : 'sky', sub: `${V.n_sections} 节原文`});
+}
+
+function _deadOpenScene(){}
 function openScene(s){
   SCENE.id = s.id; SCENE.paused = false; SCENE.skip = false; SCENE.seats = {}; SCENE.notes = {};
   const scr = $('#scr-war');

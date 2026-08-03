@@ -173,8 +173,8 @@ async def main():
         # ---------- 场景：明标待接线，不用剧本顶 ----------
         await page.click('[data-hud="scenes"]'); await page.wait_for_timeout(500)
         t = await page.inner_text("#scr-war")
-        check("待接线" in t, "场景明标待接线")
-        check("self_reflection" in t or "_autolock_report" in t, "写明晨会/复盘将读哪些真实文件")
+        check("需要老板钥匙" in t, "公开层晨会上锁（观点带标的与仓位）")
+        check("self_reflection" in t or "_autolock_report" in t, "写明晨会/复盘读哪些真实文件")
         await page.screenshot(path=str(SHOTS / "g-scenes.png"))
         await page.click("#panelClose")
 

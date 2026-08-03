@@ -30,8 +30,10 @@ const PROVENANCE = {
     ['PK 榜', 'invest skills/_PLATFORM/ledger/pk_board.json'],
     ['平仓账本', 'invest skills/_PLATFORM/ledger/trades.jsonl'],
     ['净值口径 rr.playbookex.com', null]]},
-  scenes:   {status:'pending', reads:[
-    ['各策略观点原件（晨会/复盘，待接线）', 'invest skills/_PLATFORM/riskboard/reports']]},
+  scenes:   {status:'real', reads:[
+    ['brownsugar 观点与反思', 'invest skills/brownsugar/reports'],
+    ['serenity 锁仓简报', 'invest skills/serenity/reports'],
+    ['综合摘要（本地 Claude 产出）', null]]},
   trading:  {status:'real', reads:[
     ['跨策略风险报表', 'invest skills/_PLATFORM/riskboard/reports'],
     ['平仓流水', 'invest skills/_PLATFORM/ledger/trades.jsonl'],
