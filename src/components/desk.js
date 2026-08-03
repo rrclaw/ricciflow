@@ -81,7 +81,7 @@ RENDER.desk = function(){
     if(!realAuthed()) return openVault(()=>{});      /* 先转保险库拿钥匙 */
     loadReal(true).then(ok=> ok ? RENDER.desk() : toast('接不上：' + REAL.err));
   };
-  $('#btnGacha').onclick = ()=> toast('抽卡要改成从 216 条真实待验证信念里抽线索。改完再开 —— 现在不往名册里塞假人。');
+  $('#btnGacha').onclick = drawBeliefCard;
 };
 
 /* 考核数据也不再预置 —— 由 applyRealRoster() 从真实账本填充。
@@ -701,4 +701,50 @@ async function doPull(){
   const left = $('#pullBtn');
   left.textContent = `⊕ 抽一发（剩 ${GACHA_LEFT}）`;
   if(GACHA_LEFT > 0 && DATA.gachaPool.length) left.disabled = false;
+}
+
+
+/* ==========================================================================
+   抽卡 = 从真实待人审信念里抽一条线索
+   稀有度不是随机的：SSR = 🔴三方背离 + 反方证据齐 + 把握高。抽到就是一条真在等
+   人处理的课题，点开能看到它的证据/反方/来源缺口。
+   ========================================================================== */
+async function drawBeliefCard(){
+  if(!realAuthed()) return toast('抽的是真实待验证信念，要老板钥匙');
+  if(typeof loadPipeline === 'function' && !PIPE.data){
+    toast('先读流水线…');
+    if(!(await loadPipeline())) return toast('读不到：' + PIPE.err);
+  }
+  const pool = (PIPE.data.stages.find(s=> s.n === '初筛') || {items:[]}).items
+    .concat((PIPE.data.stages.find(s=> s.n === '深研') || {items:[]}).items);
+  if(!pool.length) return toast('待验证池是空的 —— 这也是真话');
+  const t = pool[Math.floor(Math.random() * pool.length)];
+  /* 稀有度由这条信念自己的成色决定 */
+  const strong = (t.strength || 0) >= 3 || (t.conf || 0) >= 0.7;
+  const both = (t.evidence || 0) > 0 && (t.against || 0) > 0;
+  const tier = strong && both ? 'SSR' : (strong || both) ? 'SR' : 'R';
+  openModal(`
+    <div class="win-bar" style="background:var(--${tier==='SSR'?'coral':tier==='SR'?'mustard':'teal'})">
+      <span>${tier} · 抽到一条真线索</span>
+      <span class="dots" id="mClose" style="cursor:pointer">_ □ ×</span></div>
+    <div style="padding:14px">
+      <div class="row" style="gap:5px;margin-bottom:8px">
+        <span class="tag ${tier==='SSR'?'rose':tier==='SR'?'gold':''}">${tier}</span>
+        ${t.conf != null ? `<span class="tag">把握 ${t.conf}</span>` : ''}
+        ${t.strength ? `<span class="tag rose">🔴 强度 ${t.strength}</span>` : ''}
+        ${t.evidence != null ? `<span class="tag">证据 ${t.evidence} · 反方 ${t.against}</span>` : ''}
+      </div>
+      <div style="font-size:13px;font-weight:700;line-height:1.7">${t.title}</div>
+      <div class="bridge" style="margin-top:10px">
+        稀有度不是随机的：<b>SSR = 🔴三方背离 + 正反证据都有 + 把握高</b>。
+        抽到的是账本里真在等人处理的一条，不是抽出来的角色。</div>
+      <div class="row" style="gap:6px;margin-top:11px">
+        <button class="px-btn on dotted" id="gcOpen">▸ 看它的档案</button>
+        <button class="px-btn ghost" id="gcAgain">↻ 再抽一条</button>
+      </div>
+    </div>`);
+  $('#mClose').onclick = closeModal;
+  $('#gcOpen').onclick = ()=>{ closeModal(); openComponent('research');
+    setTimeout(()=> openPipeCard(t.id), 400); };
+  $('#gcAgain').onclick = ()=>{ closeModal(); drawBeliefCard(); };
 }

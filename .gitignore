@@ -10,3 +10,4 @@ bridge/__pycache__/
 **/__pycache__/
 bridge/src_config.json
 bridge/cache/
+bridge/npc/*.json

@@ -56,29 +56,13 @@ function visitNpc(id){
 }
 
 let NPC_TALK_STEP = {};
+/* 和别家机构「交流」= 看这一家（化名）最近真实说过什么。
+   以前这里是写死的三段对白，已删 —— 说的话必须有出处。 */
 function npcTalk(id){
-  const npc = DATA.npcs[id];
-  const step = NPC_TALK_STEP[id] || 0;
-  const t = npc.talk[step % npc.talk.length];
-  NPC_TALK_STEP[id] = step + 1;
-  openModal(`
-    <div class="win-bar" style="background:${npc.color}"><span>${npc.n} · 交流</span>
-      <span class="dots" id="mClose" style="cursor:pointer">_ □ ×</span></div>
-    <div style="padding:13px">
-      <div class="t-xs t-dim" style="font-weight:700;margin-bottom:6px">你：${t.q}</div>
-      <div class="saybox">${t.a}</div>
-      ${t.poachWarn ? `<div class="bridge" style="margin-top:9px">他们要挖你的人。回办公室看咖啡机日报，offer 已经到了。</div>` : ''}
-      ${t.clue ? `<div class="row" style="margin-top:10px">
-        <button class="px-btn on" id="npcClue">≡ 记为线索（★★ 灰点）</button>
-        <button class="px-btn ghost" id="npcSkip">听听就好</button></div>` : ''}
-    </div>`);
-  $('#mClose').onclick = closeModal;
-  const skip = $('#npcSkip'); if(skip) skip.onclick = closeModal;
-  const clue = $('#npcClue');
-  if(clue) clue.onclick = ()=>{
-    DATA.clues.push({src:'本次会话', hook:'（见下方线索池）'});
-    closeModal(); toast('已记为线索 → 研究台灵感列（外部信息默认灰点）');
-  };
+  const map = {duanqiao:'zhongxin', citadel:'huatai2', menghu:'guosheng2', jingtan:'zhaoshang2'};
+  const nid = map[id] || 'zhongxin';
+  if(typeof openNpcCard === 'function') return openNpcCard(nid);
+  toast('NPC 素材模块没加载');
 }
 
 function npcPoach(id){

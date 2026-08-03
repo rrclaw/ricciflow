@@ -821,11 +821,51 @@ async function runTrip(){
 }
 
 /* ---------- 世界地图入口桥接 ---------- */
-function startVenueDinner(venueKey){
-  DINNER_VENUE = venueKey;
-  openComponent('scenes');
-  const sc = DATA.scenes.find(x=>x.id==='dinner');
-  setTimeout(()=> openScene(sc), 60);
+/* 饭局/茶室：素材是缺口账本里真实的「市场怎么讲」对「一手证据」。
+   这层对立本来就存在，不用编 —— 饭桌上听到的说法 vs 你手里那份一手材料。 */
+async function startVenueDinner(venueKey){
+  if(!realAuthed()) return toast('饭局上聊的是知识库里真实的传闻与一手证据，要老板钥匙');
+  openModal(`<div class="win-bar" style="background:var(--pink)"><span>入席…</span>
+      <span class="dots" id="mClose" style="cursor:pointer">×</span></div>
+    <div style="padding:13px"><div class="t-sm">正在翻最近谁在传什么…</div></div>`);
+  $('#mClose').onclick = closeModal;
+  let d;
+  try{
+    d = await (await fetch(BRIDGE + '/api/rumors?key=' + encodeURIComponent(VAULT.key),
+      {signal:AbortSignal.timeout(30000)})).json();
+  }catch(e){ d = {ok:false, error:String(e.message || e)}; }
+  if(!d || !d.ok){
+    $('#modalBox').querySelector('div:last-child').innerHTML =
+      `<div class="t-sm t-rose" style="font-weight:700">读不到：${(d && d.error) || '未知'}</div>`;
+    return;
+  }
+  const V = (typeof VENUE_DECOR !== 'undefined' && VENUE_DECOR[venueKey]) || {n:'饭局'};
+  /* 场地只决定听到几条、以及信息成色下限 —— 不改内容本身 */
+  const cap = venueKey === 'ktv' ? 8 : venueKey === 'tea' ? 4 : 6;
+  const rows = d.rows.filter(g=> venueKey !== 'tea' || (g.conviction || 'C') <= 'B').slice(0, cap);
+  $('#modalBox').innerHTML = `
+    <div class="win-bar" style="background:var(--pink)"><span>${V.n} · 今晚这桌</span>
+      <span class="sub">传闻 vs 一手 · ${rows.length} 条</span>
+      <span class="dots" id="mClose2" style="cursor:pointer">_ □ ×</span></div>
+    <div style="padding:13px;max-height:76vh;overflow:auto">
+      <div class="bridge" style="margin-bottom:10px">
+        桌上说的每一句都是<b>真的有人在传</b>的说法，来自缺口账本的「市场观点」字段；
+        右边配的是你手上那份<b>一手证据</b>。场地只决定你能听到几条，不改内容。</div>
+      ${rows.map(g=>`
+        <div class="gap-item">
+          <div class="gt"><span class="tag ${g.type === '🔴' ? 'rose' : 'gold'}">${g.type_name || ''}</span>
+            <span class="tag">把握 ${g.conviction || '—'}</span>
+            <span class="t-dim">${g.as_of || ''} · ${g.slug}</span></div>
+          <div class="why"><b>桌上传的</b> ${g.market_view}</div>
+          <div class="why t-cyan"><b>你手上的一手</b> ${g.first_hand}</div>
+          ${g.investment ? `<div class="why"><b>能怎么用</b> ${g.investment}</div>` : ''}
+        </div>`).join('')}
+      <div class="t-xs t-dim" style="font-weight:700;margin-top:9px">
+        读自 ${d.file} · 全库 ${d.total} 条这类对立</div>
+    </div>`;
+  $('#mClose2').onclick = closeModal;
+  if(typeof pushDaily === 'function')
+    pushDaily('intel', `${V.n} 听回 ${rows.length} 条「传闻 vs 一手」的对照`);
 }
 function startFieldTrip(){
   openComponent('scenes');

@@ -283,6 +283,31 @@ class H(http.server.BaseHTTPRequestHandler):
                 return self._send(200, kbreal.wiki_page(slug))
             except Exception as e:
                 return self._send(200, {"ok": False, "error": str(e)})
+        if u.path == "/api/rumors":
+            # 饭局/茶室的素材：缺口账本里「市场怎么讲」对「一手证据」的真实对立
+            try:
+                import kbreal
+                idx = kbreal.gap_index()
+                rows = []
+                for slug, gs in idx.items():
+                    for g in gs:
+                        if g.get("market_view") and g.get("first_hand"):
+                            rows.append({**g, "slug": slug})
+                rows.sort(key=lambda g: g.get("as_of") or "", reverse=True)
+                return self._send(200, {"ok": True, "total": len(rows), "rows": rows[:60],
+                                        "file": "wiki/_RESOLVED_GAPS.json"})
+            except Exception as e:
+                return self._send(200, {"ok": False, "error": str(e)})
+        if u.path in ("/api/npc", "/api/npc_one"):
+            # NPC：化名角色 + 真实公开发言蒸馏（引述带日期与出处，>90 天不进对话池）
+            try:
+                import npc as npcmod
+                if u.path == "/api/npc":
+                    return self._send(200, npcmod.roster())
+                nid = (q.get("id") or [""])[0]
+                return self._send(200, npcmod.npc(nid))
+            except Exception as e:
+                return self._send(200, {"ok": False, "error": str(e)})
         if u.path == "/api/session":
             # 晨会 / 复盘：各策略观点原文汇总 + 可并排比的分歧
             try:
