@@ -76,8 +76,7 @@ function npcTalk(id){
   const skip = $('#npcSkip'); if(skip) skip.onclick = closeModal;
   const clue = $('#npcClue');
   if(clue) clue.onclick = ()=>{
-    DATA.tickets.push({id:'t'+Date.now(), title:t.clue.slice(0,14)+'…', stage:0, days:0,
-      prov:'外部交流·'+npc.n, recipe:{src:['web'], res:['macro'], mode:'快研'}});
+    DATA.clues.push({src:'本次会话', hook:'（见下方线索池）'});
     closeModal(); toast('已记为线索 → 研究台灵感列（外部信息默认灰点）');
   };
 }

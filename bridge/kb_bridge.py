@@ -283,6 +283,13 @@ class H(http.server.BaseHTTPRequestHandler):
                 return self._send(200, kbreal.wiki_page(slug))
             except Exception as e:
                 return self._send(200, {"ok": False, "error": str(e)})
+        if u.path == "/api/pipeline":
+            # 研究流水线：真实课题生命周期（信念账本 + 待入库 + 缺口 + 今日锁仓 + 在仓）
+            try:
+                import pipeline
+                return self._send(200, pipeline.pipeline())
+            except Exception as e:
+                return self._send(200, {"ok": False, "error": str(e)})
         if u.path == "/api/desk":
             # 交易台：跨策略风险报表 + 真实平仓流水 + R1-R10 风控基线
             try:

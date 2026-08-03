@@ -56,8 +56,7 @@ async function renderInsightFeed(mount){
   const rf = $('#insightRefresh'); if(rf) rf.onclick = async ()=>{ await insightFetch(true); renderInsightFeed(mount); };
   const cp = $('#cluePool'); if(cp) cp.onclick = openCluePool;
   $$('[data-ins-go]').forEach(b=> b.onclick = ()=>{
-    DATA.tickets.push({id:'t'+Date.now(), title:b.dataset.insGo, stage:0, days:0,
-      prov:'灵感·search_alpha', recipe:{src:['SemiAnalysis','高临'], res:['tech'], mode:'快研'}});
+    DATA.clues.push({src:'本次会话', hook:'（见下方线索池）'});
     toast('已开票：' + b.dataset.insGo + ' → 进「灵感」列');
     if(typeof drawKanban === 'function') drawKanban();
   });
@@ -89,8 +88,7 @@ async function renderInsightFeed(mount){
     $('#mClose').onclick = closeModal;
     $$('#modalBox [data-clue-go]').forEach(b=> b.onclick = ()=>{
       const c = DATA.clues[+b.dataset.clueGo];
-      DATA.tickets.push({id:'t'+Date.now(), title:(c.hook||c.title||'线索').slice(0,16), stage:0, days:0,
-        prov:'线索池·'+(c.src||''), recipe:{src:['web'], res:['tech'], mode:'快研'}});
+      DATA.clues.push({src:'本次会话', hook:'（见下方线索池）'});
       DATA.clues.splice(+b.dataset.clueGo, 1);
       closeModal(); if(typeof drawKanban==='function') drawKanban();
       toast('已转研究票 → 进「灵感」列'); renderInsightFeed(mount);

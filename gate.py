@@ -96,14 +96,14 @@ async def main():
         await page.screenshot(path=str(SHOTS / "g-city.png"))
 
         # NPC 拜访 + 交流记线索 + 挖角
-        tickets0 = await page.evaluate("DATA.tickets.length")
+        tickets0 = await page.evaluate("DATA.clues.length")
         await page.evaluate("visitNpc('citadel')")
         await page.wait_for_timeout(400)
         await page.evaluate("npcTalk('citadel')")
         await page.wait_for_timeout(300)
         check(await page.eval_on_selector_all("#npcClue", "e=>e.length") == 1, "NPC 交流对话出现")
         await page.click("#npcClue"); await page.wait_for_timeout(200)
-        check(await page.evaluate("DATA.tickets.length") == tickets0 + 1, "「记为线索」→ 灵感列 +1")
+        check(await page.evaluate("DATA.clues.length") >= 1, "「记为线索」→ 线索池 +1（不再伪造流水线票）")
         res0 = await page.evaluate("DATA.researchers.length")
         await page.evaluate("npcPoach('citadel')")
         await page.wait_for_timeout(300)
@@ -138,44 +138,19 @@ async def main():
               "性格滑块已删（真策略的口径由 doctrine 定死）")
         await page.click("#panelClose")
 
-        # ---------- 研究台 ----------
-        await page.click('[data-hud="research"]'); await page.wait_for_timeout(500)
-        check(await page.eval_on_selector_all("#kanban > div", "e=>e.length") == 6, "流水线 6 列")
-        tick = await page.evaluate("DATA.tickets.length")
-        check(tick >= 10, f"流水线票 >= 10（实得 {tick}）")
+        # ---------- 研究台（公开层：灵感流真实、流水线上锁）----------
+        await page.click('[data-hud="research"]'); await page.wait_for_timeout(600)
+        check(await page.evaluate("Array.isArray(DATA.tickets) && DATA.tickets.length === 0"),
+              "9 张假票已删除")
+        check(await page.evaluate("typeof DATA.chatScript === 'undefined'"), "深研对话剧本已删除")
+        check(await page.evaluate("typeof DATA.tracking === 'undefined'"), "四路跟踪假情报已删除")
+        kb = await page.inner_text("#kanban")
+        check("需要老板钥匙" in kb or "要老板钥匙" in kb, "公开层流水线上锁")
+        check("_BELIEFS.md" in kb, "上锁处写明流水线读哪些真实账本")
         await page.wait_for_timeout(3200)   # 等 insight 灵感流（实时源，可能慢）
         ideas = await page.eval_on_selector_all("#ideaFeed .gap-item", "e=>e.length")
         print(f"  {'ok  ' if ideas>=1 else 'soft'}   灵感流卡数={ideas}（实时模块，软断言）")
-        goBtn = await page.query_selector("[data-ins-go]") or await page.query_selector("[data-idea-go]")
-        if goBtn:
-            await goBtn.click(); await page.wait_for_timeout(300)
-            check(await page.evaluate("DATA.tickets.length") >= tick + 1, "灵感「立课题」→ 票 +1")
-        # 投稿
-        rid = await page.evaluate("(DATA.researchers[0]||{}).id || ''")
-        inbox0 = await page.evaluate(f"((DATA.researchers.find(r=>r.id==='{rid}')||{{}}).inbox||[]).length")
-        await page.click("#subGo"); await page.wait_for_timeout(300)
-        inbox1 = await page.evaluate(f"((DATA.researchers.find(r=>r.id==='{rid}')||{{}}).inbox||[]).length")
-        check(inbox1 >= inbox0, f"投稿派单到真实策略（{rid}）")
-        # 金样例1
-        await page.click("text=★ 存储涨价外溢设备与材料"); await page.wait_for_timeout(800)
-        check(await page.eval_on_selector_all("[data-ask]", "e=>e.length") == 8, "追问链 8 条（四层×2）")
-        check(await page.eval_on_selector_all("[data-lack]", "e=>e.length") == 3, "缺料提示 3 处")
-        for i in range(3):
-            btns = await page.query_selector_all("[data-ask]")
-            await btns[min(2 + i, len(btns) - 1)].click()
-            await page.wait_for_timeout(450)
-        check(await page.eval_on_selector_all("#chatLog .saybox", "e=>e.length") >= 4, "研究对话 >= 4 轮")
-        v0 = 0
-        await page.click("[data-sink]"); await page.wait_for_timeout(300)
-        await page.click("#sinkOK"); await page.wait_for_timeout(300)
-        check(await page.evaluate("DATA.atlas.length > 0"),
-              "打标沉淀 → 知识库金旗 +1（跨屏联动）")
-        await page.screenshot(path=str(SHOTS / "g-deep.png"))
-        # 金样例2
-        await page.click("#benchBack"); await page.wait_for_timeout(400)
-        await page.click("text=★ 北美数据中心外溢北欧"); await page.wait_for_timeout(500)
-        check(await page.eval_on_selector_all("#trackRoutes .gap-item", "e=>e.length") == 4,
-              "跟踪自动拆解 == 4 路（抗议/政策/拿地/建设）")
+        await page.screenshot(path=str(SHOTS / "g-research.png"))
         await page.click("#panelClose")
 
         # ---------- 交易台（公开层：上锁，不许出现任何持仓数字）----------
