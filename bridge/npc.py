@@ -53,42 +53,42 @@ def _days(d):
 # 「一贯立场」= 从其长期一致的公开表态归纳的骨架，写死在这里，保证性格连贯。
 ROSTER = [
     {"id": "huang", "alias": "老黄 · 黄仁训", "org": "某加速计算巨头", "sprite": "oldmoney",
-     "keys": ["黄仁勋", "Jensen Huang", "Jensen"],
+     "keys": [],
      "stance": ["算力永远不够，需求被低估的次数比高估多",
                 "买得越多省得越多 —— 总拥有成本才是账",
                 "对手永远差一代，而且差的那一代最难追"]},
     {"id": "altman", "alias": "山姆 · 奥特蛮", "org": "某闭源大模型公司", "sprite": "tech",
-     "keys": ["Altman", "奥特曼", "山姆·奥尔特曼"],
+     "keys": [],
      "stance": ["scaling 还没撞墙，先上规模再谈单位经济",
                 "算力是唯一的硬约束，能签多少签多少",
                 "AGI 的时间表一贯偏乐观"]},
     {"id": "musk", "alias": "马斯壳", "org": "某垂直整合帝国", "sprite": "quant",
-     "keys": ["马斯克", "Musk", "Elon"],
+     "keys": [],
      "stance": ["自建、垂直整合，供应链不假手于人",
                 "时间表习惯性乐观，然后习惯性后延",
                 "先做出来再谈economics"]},
     {"id": "amodei", "alias": "阿摩戴", "org": "某安全优先实验室", "sprite": "serenity",
-     "keys": ["Amodei", "阿莫代", "Dario"],
+     "keys": [],
      "stance": ["能力涨得比预想快，风险也是",
                 "企业 API 优先于消费级",
                 "对时间表给区间，不给单点"]},
     {"id": "nadella", "alias": "那德拉", "org": "某超大规模云", "sprite": "macro",
-     "keys": ["Nadella", "纳德拉"],
+     "keys": [],
      "stance": ["capex 要有纪律，机队必须可复用",
                 "不为单一客户绑死架构",
                 "把算力变成可计量的生意"]},
     {"id": "zuck", "alias": "小扎 · 扎克波格", "org": "某开源权重阵营", "sprite": "growth",
-     "keys": ["扎克伯格", "Zuckerberg", "Meta 的"],
+     "keys": [],
      "stance": ["开源权重是护城河，不是慈善",
                 "自建集群不惜代价",
                 "算力先囤上，用途后想"]},
     {"id": "hassabis", "alias": "哈撒比", "org": "某科学优先实验室", "sprite": "consume",
-     "keys": ["Hassabis", "哈萨比斯", "Demis"],
+     "keys": [],
      "stance": ["科学突破优先于产品化",
                 "对时间表最保守的那个",
                 "评测要能证伪才算数"]},
     {"id": "liang", "alias": "梁文峰", "org": "某开源权重挑战者", "sprite": "growth",
-     "keys": ["梁文锋", "DeepSeek 创始人"],
+     "keys": [],
      "stance": ["极致成本效率，架构上抠出来",
                 "开源权重换生态位",
                 "不追随定价，自己定"]},
@@ -107,18 +107,30 @@ BY_ID = {r["id"]: r for r in ROSTER}
 # 渲染前的最后一道保险：真名换成**他自己的化名**，券商名换成中性说法。
 # 换成化名而不是「某位业内人士」，读起来才是一个角色在说话，而且没撒谎 ——
 # 化名与来源都明写在界面上。漏一个真名，整套定位就塌了，所以这里做大小写不敏感匹配。
-BROKERS = ["中信建投", "中信证券", "中金公司", "华泰证券", "国盛证券", "招商证券",
-           "广发证券", "兴业证券", "申万宏源", "海通证券", "国泰君安", "天风证券",
-           "东吴证券", "民生证券", "长江证券", "浙商证券", "方正证券", "光大证券",
-           "银河证券", "华创证券", "中金", "中信", "华泰", "国盛", "申万", "国君"]
-# 常见拼写变体也要收，源文件里就有把 Altman 写成 altam 的
-EXTRA_KEYS = {"altman": ["sam altman", "altam", "sam altam", "奥尔特曼"],
-              "huang": ["jensen", "huang", "老黄"],
-              "musk": ["elon"],
-              "zuck": ["mark zuckerberg", "小扎"],
-              "amodei": ["dario"],
-              "hassabis": ["demis"],
-              "nadella": ["satya"]}
+#
+# 🔴 真名检索键与券商名单**不在源码里**（本仓库是公开的）。它们住在
+#    bridge/npc/roster.json，该路径已 gitignore。没有这个文件时，redact()
+#    **失败关闭**：宁可整块不渲染，也绝不把未脱敏的原文放出去。
+_ROSTER_FILE = HERE / "npc" / "roster.json"
+
+
+def _local_roster():
+    try:
+        d = json.loads(_ROSTER_FILE.read_text())
+    except Exception:
+        return None
+    if not isinstance(d, dict) or not d.get("brokers"):
+        return None
+    return d
+
+
+_LOCAL = _local_roster()
+if _LOCAL:
+    for _r in ROSTER:
+        _r["keys"] = _LOCAL.get("keys", {}).get(_r["id"], [])
+BROKERS = (_LOCAL or {}).get("brokers", [])
+EXTRA_KEYS = (_LOCAL or {}).get("extra_keys", {})
+ROSTER_READY = _LOCAL is not None
 
 
 def _redact_map():
@@ -140,7 +152,14 @@ _RMAP = None
 
 
 def redact(text):
+    """未配置本地名册时**失败关闭** —— 返回占位而不是原文。
+
+    失败开放意味着真名与券商名会原样渲染出去, 那正是这套化名要防的事。
+    宁可显示「名册未配置」, 也不要放出一次未脱敏的原文。
+    """
     global _RMAP
+    if not ROSTER_READY:
+        return "（本地化名册未配置，内容已屏蔽）"
     if _RMAP is None:
         _RMAP = _redact_map()
     out = str(text or "")
@@ -154,6 +173,8 @@ def redact(text):
 
 def leaks(text):
     """自检：渲染前扫一遍，还能找到真名就是漏了。gate 会用这个。"""
+    if not ROSTER_READY:
+        return []          # 名册没配, redact 已整块屏蔽, 无从泄漏
     bad = []
     for name, _ in (_RMAP or _redact_map()):
         if name.isascii():
