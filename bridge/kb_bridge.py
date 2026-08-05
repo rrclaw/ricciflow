@@ -283,6 +283,15 @@ class H(http.server.BaseHTTPRequestHandler):
                 return self._send(200, kbreal.wiki_page(slug))
             except Exception as e:
                 return self._send(200, {"ok": False, "error": str(e)})
+        if u.path in ("/api/archive", "/api/archive_read"):
+            # 档案室：各策略每日留痕的索引与原文
+            try:
+                import archive as arch
+                if u.path == "/api/archive":
+                    return self._send(200, arch.day((q.get("date") or [""])[0]))
+                return self._send(200, arch.read((q.get("path") or [""])[0]))
+            except Exception as e:
+                return self._send(200, {"ok": False, "error": str(e)})
         if u.path == "/api/rumors":
             # 饭局/茶室的素材：缺口账本里「市场怎么讲」对「一手证据」的真实对立
             try:

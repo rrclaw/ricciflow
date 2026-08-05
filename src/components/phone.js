@@ -60,7 +60,8 @@ function renderPhone(){
   }
 }
 
-/* 待办 tab = 日报里那份真实待办（同一份数据，不另算） */
+/* 「今天」tab = 最新一天的留痕 + 当天待办。
+   手机只看最新一天，翻历史去档案室 —— 两边不重复。 */
 function phoneTodoHTML(){
   if(typeof realAuthed !== 'function' || !realAuthed())
     return `<div class="ph-msg"><div class="ph-meta"><span class="tag rose">上锁</span></div>
@@ -80,8 +81,17 @@ function phoneTodoHTML(){
   Object.entries(rq.buckets || {}).forEach(([k, n])=> rows.push(['审阅', 'gold', `${k} ${n} 条`, 'research']));
   if(pi.pending) rows.push(['入库', 'gold', `待入库 ${pi.pending} 条`, 'research']);
   (sp.rows || []).forEach(x=> rows.push(['人事', 'gold', `${x.n} · ${x.label}`, 'desk']));
-  if(!rows.length) return '<div class="ph-msg">今天没有待办。</div>';
-  return rows.map(([tag, cls, txt, to])=>`
+  const A = (typeof ARCH !== 'undefined') ? ARCH.day : null;
+  if(!A && typeof loadArchive === 'function')
+    loadArchive().then(ok=>{ if(ok && PHONE_TAB === 'todo') renderPhone(); });
+  const head = A ? `
+    <div class="ph-msg" style="background:var(--cream2)">
+      <b>${A.date}${A.is_today ? '（今天）' : ''}</b> · ${A.n_who} 人写了 ${A.n_files} 份<br>
+      <span class="t-dim">${A.who.slice(0, 6).map(w=> w.who + '×' + w.files.length).join('　')}</span>
+      <div style="margin-top:5px"><button class="px-btn sm ghost" data-goto="archive">▸ 翻历史（档案室）</button></div>
+    </div>` : '<div class="ph-msg">正在读最新一天的留痕…</div>';
+  if(!rows.length) return head + '<div class="ph-msg">今天没有待办。</div>';
+  return head + rows.map(([tag, cls, txt, to])=>`
     <div class="ph-msg hot">
       <div class="ph-meta"><span class="tag ${cls}">${tag}</span></div>${txt}
       <div style="margin-top:5px"><button class="px-btn sm ghost" data-goto="${to}">▸ 去处理</button></div>
@@ -120,7 +130,7 @@ function phoneGroupHTML(){
           <span class="dots" id="phClose" style="cursor:pointer">×</span></div>
         <div class="ph-tabs" id="phoneTabs">
           <button class="ph-tab on" data-pt="news">通知</button>
-          <button class="ph-tab" data-pt="todo">待办</button>
+          <button class="ph-tab" data-pt="todo">今天</button>
           <button class="ph-tab" data-pt="group">公司群</button>
           <button class="ph-tab" data-pt="bosses">老板圈</button>
         </div>

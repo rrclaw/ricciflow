@@ -107,7 +107,7 @@ function officeRoom(){
           label:'行情大屏 · 数据源', paint:paintQuoteWall});
   F.push({id:'sign',        tx:6,  ty:1, tw:4, th:2, solid:false, paint:paintSign});
   F.push({id:'meeting_door',tx:11, ty:1, tw:3, th:2, solid:false, comp:'scenes',
-          label:'会议室 · 场景', paint:paintMeetingDoor});
+          label:'会议室 · 晨会与复盘', paint:paintMeetingDoor});
   F.push({id:'rules_board', tx:16, ty:1, tw:2, th:2, solid:false, comp:'settings',
           label:'制度牌 · 系统', paint:paintRulesBoard});
   F.push({id:'bookshelf',   tx:1,  ty:4, tw:2, th:3, comp:'atlas',
@@ -124,7 +124,7 @@ function officeRoom(){
             onUse:()=> openResearcherPanel(who),
             paint:(ctx,x,y)=> paintStaffDesk(ctx, x, y, who)});
   });
-  F.push({id:'coffee',      tx:24, ty:5, tw:1, th:2, comp:'daily',
+  F.push({id:'coffee',      tx:24, ty:5, tw:1, th:2, comp:'archive',
           label:'咖啡机 · 老板日报', paint:paintCoffee});
   F.push({id:'safe', tx:1, ty:9, tw:2, th:2, comp:'finance',
           label:'保险柜 · 财务处',

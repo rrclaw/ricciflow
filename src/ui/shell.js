@@ -19,12 +19,12 @@ const COMPONENTS = [
     render: ()=> RENDER.atlas() },
   { id:'desk',     n:'研究员',   icon:'员', furn:'staff_area', color:'teal',    enabled:true,
     render: ()=> RENDER.desk() },
-  { id:'scenes',   n:'场景',     icon:'场', furn:'meeting_door', color:'pink',  enabled:true,
+  { id:'scenes',   n:'会议室',   icon:'会', furn:'meeting_door', color:'pink',  enabled:true,
     render: ()=> RENDER.war() },
   { id:'trading',  n:'交易台',   icon:'交', furn:'trade_desk', color:'coral',   enabled:true,
     render: ()=> RENDER.trading && RENDER.trading() },
-  { id:'daily',    n:'日报',     icon:'报', furn:'coffee',     color:'pink',    enabled:true,
-    render: ()=> RENDER.daily && RENDER.daily() },
+  { id:'archive',  n:'档案室',   icon:'档', furn:'coffee',     color:'pink',    enabled:true,
+    render: ()=> RENDER.archive && RENDER.archive() },
   { id:'finance',  n:'财务处',   icon:'财', furn:'safe',       color:'mustard', enabled:true,
     render: ()=> RENDER.finance && RENDER.finance() },
   { id:'settings', n:'系统',     icon:'统', furn:'rules_board', color:'ink',    enabled:true,
@@ -32,7 +32,7 @@ const COMPONENTS = [
 ];
 /* 屏容器 id 与 V1 保持一致，V1 渲染函数零改动 */
 const SCREEN_ID = { research:'scr-research', rack:'scr-sources', atlas:'scr-atlas',
-  desk:'scr-desk', scenes:'scr-war', trading:'scr-trading', daily:'scr-daily',
+  desk:'scr-desk', scenes:'scr-war', trading:'scr-trading', archive:'scr-archive',
   finance:'scr-finance', settings:'scr-sys' };
 
 function compById(id){ return COMPONENTS.find(c=> c.id === id); }
@@ -89,8 +89,8 @@ if(typeof toast !== 'function'){
 /* ---------- HUD：图标 + 全称常显，悬停出一句话说明 ---------- */
 const HUD_HINTS = {
   research:'流水线看板 · 灵感到跟踪', rack:'数据接口机架', atlas:'知识图谱与缺口', finance:'tokens 薪资 · 成本 · 基金收入',
-  desk:'研究员名册与考核', scenes:'晨会/反路演/饭局/调研', trading:'持仓·原则闸·拦截',
-  daily:'等你拍板的事', settings:'配色·LLM·装修·红线'
+  desk:'研究员名册与考核', scenes:'晨会与复盘 · 各研究员观点原文', trading:'持仓·原则闸·拦截',
+  archive:'每天谁写了什么 · 按日期归档', settings:'配色·LLM·装修·红线'
 };
 function drawHUD(){
   const hud = $('#hud');

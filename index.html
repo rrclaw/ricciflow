@@ -21,10 +21,10 @@
 <meta name="twitter:title" content="里奇流资本 · RICCI FLOW CAPITAL">
 <meta name="twitter:description" content="像素买方基金模拟经营 × AI 原生投研工作台。你当老板，AI 员工跑全链路。">
 <meta name="twitter:image" content="https://ricciflow.playbookex.com/assets/og.png">
-<link rel="manifest" href="manifest.webmanifest?v=1785771191">
-<link rel="icon" href="assets/icon.svg?v=1785771191" type="image/svg+xml">
-<link rel="stylesheet" href="src/styles.css?v=1785771191">
-<link rel="stylesheet" href="src/styles-game.css?v=1785771191">
+<link rel="manifest" href="manifest.webmanifest?v=1785904779">
+<link rel="icon" href="assets/icon.svg?v=1785904779" type="image/svg+xml">
+<link rel="stylesheet" href="src/styles.css?v=1785904779">
+<link rel="stylesheet" href="src/styles-game.css?v=1785904779">
 </head>
 <body>
 
@@ -38,7 +38,7 @@
   <span class="gt-stat">DATE <b id="tbDate">2026-07-29</b></span>
   <span class="gt-stat">数据源 <b id="tbSrc">0/16</b></span>
   <span class="gt-stat">知识库 <b id="tbCover">0%</b></span>
-  <span class="gt-stat">今日场景 <b id="tbScene">0</b></span>
+  <span class="gt-stat">档案 <b id="tbScene">0</b> 天</span>
   <span class="gt-loc" id="tbLoc">上海中心 68F · 老板办公室</span>
   <a class="gt-theme gt-gh" href="https://github.com/rrclaw/ricciflow" target="_blank" rel="noopener" title="开源仓库">★ GitHub</a>
   <button class="gt-theme" id="themeToggle" title="切换配色">◧ 配色</button>
@@ -73,7 +73,7 @@
     <div class="guide-title">欢迎回到里奇流资本，老板。</div>
     <div class="guide-body">
       <b>WASD / 方向键 / 点击地面</b> — 走动<br>
-      <b>E 或 点击家具</b> — 使用组件（办公桌=研究台 · 行情屏=数据源 · 书架=知识库…）<br>
+      <b>E 或 点击家具</b> — 使用组件（办公桌=研究台 · 行情屏=数据源 · 书架=知识库 · 咖啡机=档案室 · 会议室门=晨会）<br>
       <b>走到大门</b> — 出办公室，坐电梯，看世界<br>
       <b>滚轮</b> 缩放 · <b>拖拽</b> 平移 · <b>0</b> 复位视角<br>
       <b>底部快捷栏</b> — 懒得走路时直接开
@@ -93,33 +93,34 @@
 <!-- ========== 页脚免责（面板内可见） ========== -->
 
 <!-- 加载顺序即依赖顺序：零构建，file:// 可直开 -->
-<script src="src/core.js?v=1785771191"></script>
-<script src="src/engine/sprite.js?v=1785771191"></script>
-<script src="src/data/mock.js?v=1785771191"></script>
-<script src="src/components/desk.js?v=1785771191"></script>
-<script src="src/components/rack.js?v=1785771191"></script>
-<script src="src/components/atlas.js?v=1785771191"></script>
-<script src="src/components/scenes.js?v=1785771191"></script>
-<script src="src/components/settings.js?v=1785771191"></script>
-<script src="src/components/research.js?v=1785771191"></script>
-<script src="src/components/trading.js?v=1785771191"></script>
-<script src="src/components/daily.js?v=1785771191"></script>
-<script src="src/components/guandan.js?v=1785771191"></script>
-<script src="src/components/phone.js?v=1785771191"></script>
-<script src="src/components/finance.js?v=1785771191"></script>
-<script src="src/components/buildings.js?v=1785771191"></script>
-<script src="src/components/locked.js?v=1785771191"></script>
-<script src="src/components/npc.js?v=1785771191"></script>
-<script src="src/components/real.js?v=1785771191"></script>
-<script src="src/components/insight.js?v=1785771191"></script>
-<script src="src/components/inquiry.js?v=1785771191"></script>
-<script src="src/llm/provider.js?v=1785771191"></script>
-<script src="src/notify/notify.js?v=1785771191"></script>
-<script src="src/engine/tile.js?v=1785771191"></script>
-<script src="src/engine/walk.js?v=1785771191"></script>
-<script src="src/world/office.js?v=1785771191"></script>
-<script src="src/world/floors.js?v=1785771191"></script>
-<script src="src/world/citymap.js?v=1785771191"></script>
-<script src="src/ui/shell.js?v=1785771191"></script>
+<script src="src/core.js?v=1785904779"></script>
+<script src="src/engine/sprite.js?v=1785904779"></script>
+<script src="src/data/mock.js?v=1785904779"></script>
+<script src="src/components/desk.js?v=1785904779"></script>
+<script src="src/components/rack.js?v=1785904779"></script>
+<script src="src/components/atlas.js?v=1785904779"></script>
+<script src="src/components/scenes.js?v=1785904779"></script>
+<script src="src/components/settings.js?v=1785904779"></script>
+<script src="src/components/research.js?v=1785904779"></script>
+<script src="src/components/trading.js?v=1785904779"></script>
+<script src="src/components/daily.js?v=1785904779"></script>
+<script src="src/components/archive.js?v=1785904779"></script>
+<script src="src/components/guandan.js?v=1785904779"></script>
+<script src="src/components/phone.js?v=1785904779"></script>
+<script src="src/components/finance.js?v=1785904779"></script>
+<script src="src/components/buildings.js?v=1785904779"></script>
+<script src="src/components/locked.js?v=1785904779"></script>
+<script src="src/components/npc.js?v=1785904779"></script>
+<script src="src/components/real.js?v=1785904779"></script>
+<script src="src/components/insight.js?v=1785904779"></script>
+<script src="src/components/inquiry.js?v=1785904779"></script>
+<script src="src/llm/provider.js?v=1785904779"></script>
+<script src="src/notify/notify.js?v=1785904779"></script>
+<script src="src/engine/tile.js?v=1785904779"></script>
+<script src="src/engine/walk.js?v=1785904779"></script>
+<script src="src/world/office.js?v=1785904779"></script>
+<script src="src/world/floors.js?v=1785904779"></script>
+<script src="src/world/citymap.js?v=1785904779"></script>
+<script src="src/ui/shell.js?v=1785904779"></script>
 </body>
 </html>

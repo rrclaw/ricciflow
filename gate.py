@@ -163,7 +163,7 @@ async def main():
         await page.click("#panelClose")
 
         # ---------- 日报 / 财务处（同样上锁）----------
-        for hud, name in (("daily", "日报"), ("finance", "财务处")):
+        for hud, name in (("archive", "档案室"), ("finance", "财务处")):
             await page.click(f'[data-hud="{hud}"]'); await page.wait_for_timeout(500)
             t = await page.inner_text(".screen.active")
             check("需要老板钥匙" in t, f"无钥匙时{name}上锁")
@@ -194,10 +194,10 @@ async def main():
         check(await page.evaluate("window.__notifCount") > n0, "系统通知真发（Notification 构造）")
         check(await page.eval_on_selector_all("#scr-sys .redline", "e=>e.length") >= 6 + 8, "纪律红线 + 装修列表齐")
         # 装修：停用日报
-        await page.click('[data-decor="daily"]'); await page.wait_for_timeout(300)
-        check(await page.eval_on_selector_all('[data-hud="daily"].off, .hud-item.off', "e=>e.length") >= 1,
+        await page.click('[data-decor="archive"]'); await page.wait_for_timeout(300)
+        check(await page.eval_on_selector_all('[data-hud="archive"].off, .hud-item.off', "e=>e.length") >= 1,
               "装修停用 → HUD 图标隐藏")
-        await page.click('[data-decor="daily"]'); await page.wait_for_timeout(200)
+        await page.click('[data-decor="archive"]'); await page.wait_for_timeout(200)
         await page.click("#panelClose")
 
         # ---------- 真交互：相机 / 工位看板 / 场所内景 ----------
@@ -318,7 +318,7 @@ async def main():
         # 逐个组件打开，DOM 里不许出现「编造 / 虚构 / 演示用数据」。
         # 这条断言的意义：以前是「摆假数字 + 挂 DEMO 角标」，角标没人看，数字会被当真。
         bad_words = ("编造", "虚构", "演示用")
-        for c in ("research", "rack", "atlas", "desk", "scenes", "trading", "daily",
+        for c in ("research", "rack", "atlas", "desk", "scenes", "trading", "archive",
                   "finance", "settings"):
             await page.evaluate(f"openComponent('{c}')")
             await page.wait_for_timeout(400)
@@ -339,7 +339,7 @@ async def main():
                 pth = ROOT / raw if raw.startswith("bridge/") else Path.home() / raw
                 check(pth.exists(), f"{cid} 出处存在：{raw}")
         # 公开层：机密组件必须上锁，且屏幕上不许出现净值/持仓数字
-        for c in ("trading", "daily", "finance"):
+        for c in ("trading", "archive", "finance"):
             await page.evaluate(f"openComponent('{c}')")
             await page.wait_for_timeout(350)
             t = await page.inner_text("#panelBody")

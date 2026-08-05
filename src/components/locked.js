@@ -38,10 +38,10 @@ const PROVENANCE = {
     ['跨策略风险报表', 'invest skills/_PLATFORM/riskboard/reports'],
     ['平仓流水', 'invest skills/_PLATFORM/ledger/trades.jsonl'],
     ['风控基线 R1-R10', 'invest skills/_PLATFORM/tradelib/riskrules_baseline.yaml']]},
-  daily:    {status:'real', reads:[
-    ['当日 summary 报告', 'invest skills/summary/reports'],
-    ['审阅队列', KBW + '/_REVIEW_QUEUE.md'],
-    ['待入库队列', KBW + '/_PENDING_INGEST.md']]},
+  archive:  {status:'real', reads:[
+    ['各策略每日留痕', 'invest skills/brownsugar/reports'],
+    ['当日 summary 正文', 'invest skills/summary/reports'],
+    ['审阅队列', KBW + '/_REVIEW_QUEUE.md']]},
   finance:  {status:'real', reads:[
     ['真实 token 用量', '.claude/projects'],
     ['计价与去重', 'bridge/token_ledger.py']]},
