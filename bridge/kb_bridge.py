@@ -322,6 +322,24 @@ class H(http.server.BaseHTTPRequestHandler):
                 return self._send(200, views.session((q.get("which") or ["morning"])[0]))
             except Exception as e:
                 return self._send(200, {"ok": False, "error": str(e)})
+        if u.path in ("/api/inbox", "/api/workbench"):
+            # 老板选题队列 + 研究工作台（本机已有什么 / 该问什么 / 下一步跑什么）
+            try:
+                import research
+                if u.path == "/api/inbox":
+                    return self._send(200, research.inbox())
+                sid = (q.get("id") or [""])[0]
+                text = (q.get("q") or [""])[0]
+                if sid and not text:
+                    r = research._find(sid)
+                    if not r:
+                        return self._send(404, {"ok": False, "error": "没有这条投稿"})
+                    text = r["text"]
+                if not text:
+                    return self._send(400, {"ok": False, "error": "缺 id 或 q"})
+                return self._send(200, research.workbench(text, sid))
+            except Exception as e:
+                return self._send(200, {"ok": False, "error": str(e)})
         if u.path == "/api/pipeline":
             # 研究流水线：真实课题生命周期（信念账本 + 待入库 + 缺口 + 今日锁仓 + 在仓）
             try:
@@ -393,6 +411,18 @@ class H(http.server.BaseHTTPRequestHandler):
             allc[body.get("id","")] = body.get("cfg", {})
             json.dump(allc, open(cf, "w"), ensure_ascii=False)
             return self._send(200, {"ok": True})
+        if u.path in ("/api/submit", "/api/sub_status"):
+            n = int(self.headers.get("Content-Length", 0))
+            body = json.loads(self.rfile.read(n) or b"{}")
+            try:
+                import research
+                if u.path == "/api/submit":
+                    return self._send(200, research.submit(
+                        body.get("text"), body.get("who"), body.get("tag")))
+                return self._send(200, research.set_status(
+                    body.get("id"), body.get("status") or "done"))
+            except Exception as e:
+                return self._send(200, {"ok": False, "error": str(e)})
         if u.path == "/api/carry":
             n = int(self.headers.get("Content-Length", 0))
             body = json.loads(self.rfile.read(n) or b"{}")

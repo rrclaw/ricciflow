@@ -189,9 +189,22 @@ def pipeline():
                 "review": b["review"], "gap": b["gap"], "page": b["page"],
                 "src": "wiki/_BELIEFS.md", "next": next_step}
 
+    # 老板自己投的选题也进灵感列 —— 以前投稿箱点完什么都不出现，正文直接丢了
+    subs = []
+    try:
+        import research
+        for r in research.inbox(30)["rows"]:
+            if r.get("status") == "done":
+                continue
+            subs.append({"id": r["id"], "stage": "灵感", "title": r["text"][:90],
+                         "date": r["date"], "who": "老板投稿", "sub": True,
+                         "full": r["text"], "src": "bridge/inbox.jsonl",
+                         "next": "点开进研究工作台：看本机已有什么、该问什么"})
+    except Exception:
+        pass
     stages = [
-        {"n": "灵感", "note": "今天世界在聊什么（实时源）", "items": [],
-         "src": "bridge/distill.py insight_daily()"},
+        {"n": "灵感", "note": f"老板投的选题 {len(subs)} 条 · 实时热点在左栏", "items": subs,
+         "src": "bridge/inbox.jsonl + bridge/distill.py"},
         {"n": "初筛", "note": f"待人审的新信念 {len(proposed)} 条",
          "items": [bcard(b, "初筛", "人审：endorse / 补反方证据 / 退回") for b in proposed[:40]],
          "src": "wiki/_BELIEFS.md · Proposed"},

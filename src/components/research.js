@@ -96,14 +96,151 @@ function bindSubmit(){
   $$('#subType .opt').forEach(o=> o.onclick = ()=>{
     $$('#subType .opt').forEach(x=>x.classList.toggle('on', x===o)); });
   $$('#subWho .opt').forEach(o=> o.onclick = ()=> o.classList.toggle('on'));
-  $('#subGo').onclick = ()=>{
-    const type = $('#subType .opt.on').dataset.v;
-    const text = $('#subText').value.trim();
-    if(!text) return toast('空投稿不收');
-    const who = $$('#subWho .opt.on').map(o=>o.dataset.v);
-    DATA.clues.push({src:'本次会话', hook:'（见下方线索池）'});
-    who.forEach(id=> dispatchTask(id, '交叉验证：' + text.slice(0,10)));
-    drawKanban(); toast(`已进「初筛」，派给 ${who.length} 人交叉验证`);
+  $('#subGo').onclick = async ()=>{
+    const text = ($('#subText').value || '').trim();
+    if(text.length < 8) return toast('太短了，至少写 8 个字');
+    if(!realAuthed()) return toast('投稿要落到本机队列，需要老板钥匙');
+    const who = $$('#subWho .opt.on').map(o=> o.dataset.v);
+    const tag = ($('#subType .opt.on') || {}).textContent || '';
+    let d;
+    try{
+      d = await (await fetch(BRIDGE + '/api/submit?key=' + encodeURIComponent(VAULT.key), {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({text, who, tag}), signal:AbortSignal.timeout(20000)})).json();
+    }catch(e){ d = {ok:false, error:String(e.message || e)}; }
+    if(!d || !d.ok) return toast('没投进去：' + ((d && d.error) || '桥不通'));
+    $('#subText').value = '';
+    toast('已进选题队列 —— 正在给你翻本机已有的料');
+    await loadPipeline(true);
+    drawKanban();
+    openWorkbench(d.row.id);          /* 直接进工作台，别让人自己找 */
+  };
+}
+
+/* ==========================================================================
+   研究工作台 —— 投了个话题，先把「本机已经有什么」摊开
+   不生成观点：只找出来、对上号、列出该问什么、指出下一步跑什么命令。
+   ========================================================================== */
+async function openWorkbench(sid, q){
+  if(!realAuthed()) return toast('工作台读的是本机知识库，需要老板钥匙');
+  openModal(`<div class="win-bar" style="background:var(--mustard)"><span>研究工作台</span>
+      <span class="dots" id="mClose" style="cursor:pointer">_ □ ×</span></div>
+    <div style="padding:14px"><div class="t-sm" style="font-weight:700">
+      正在翻本机的 wiki、缺口账本、信念账本和原始材料…</div></div>`);
+  $('#mClose').onclick = closeModal;
+  let d;
+  try{
+    const qs = sid ? 'id=' + encodeURIComponent(sid) : 'q=' + encodeURIComponent(q || '');
+    d = await (await fetch(BRIDGE + '/api/workbench?' + qs + '&key=' + encodeURIComponent(VAULT.key),
+      {signal:AbortSignal.timeout(40000)})).json();
+  }catch(e){ d = {ok:false, error:String(e.message || e)}; }
+  if(!d || !d.ok){
+    $('#modalBox').querySelector('div:last-child').innerHTML =
+      `<div class="t-sm t-rose" style="font-weight:700">${(d && d.error) || '读不到'}</div>`;
+    return;
+  }
+  drawWorkbench(d);
+}
+
+function drawWorkbench(d){
+  const empty = t=> `<div class="t-xs t-dim" style="font-weight:700;line-height:1.8">${t}</div>`;
+  const iq = d.inquiry || {};
+  const layers = (iq.layers || []).filter(l=> (l.qs || []).length);
+
+  $('#modalBox').innerHTML = `
+    <div class="win-bar" style="background:var(--mustard)">
+      <span>研究工作台</span><span class="sub">本机已有什么 · 该问什么 · 下一步</span>
+      <span class="dots" id="mClose2" style="cursor:pointer">_ □ ×</span></div>
+    <div style="padding:14px;max-height:78vh;overflow:auto">
+      <div class="minutes" style="font-size:11px;line-height:1.9;margin-bottom:9px">${
+        String(d.text).replace(/[<>&]/g, c=> ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</div>
+      <div class="row wrap" style="gap:4px;margin-bottom:11px">
+        <span class="cap">检索词</span>
+        ${d.terms.slice(0, 10).map(t=>`<span class="tag">${t}</span>`).join('')}
+        <span class="sp"></span>
+        <span class="t-xs t-dim" style="font-weight:700">从本机语料词表里切的，切不出来的词说明这台机器没沾过</span>
+      </div>
+
+      <div class="cap" style="margin:10px 0 5px">① 本机已经有的页（${d.wiki.length}）</div>
+      ${d.wiki.length ? d.wiki.map(w=>`
+        <div class="gap-item" style="cursor:pointer" data-wbwiki="${w.slug}">
+          <div class="gt">
+            <span class="tag ${w.docs > 20 ? 'gold' : w.docs ? '' : 'rose'}">${w.docs} 份材料</span>
+            ${w.stance ? `<span class="tag ${w.stance==='bullish'?'cyan':''}">${w.stance}</span>` : ''}
+            <span><b>${w.title}</b> <span class="t-dim">${w.slug}</span></span></div>
+          <div class="why">命中 ${w.hit.join('、')} · 缺口 ${w.gaps} 条 · 最近材料 ${w.fresh} 天前</div>
+        </div>`).join('')
+        : empty('一页都没对上 —— <b>这本身就是结论</b>：这块是本机的空白，得从建页开始。')}
+
+      <div class="cap" style="margin:12px 0 5px">② 已记录的分歧（${d.gaps.length}）· 研究该切进去的地方</div>
+      ${d.gaps.length ? d.gaps.map(g=>`
+        <div class="gap-item">
+          <div class="gt"><span class="tag ${g.type === '🔴' ? 'rose' : 'gold'}">${g.type_name || ''}</span>
+            <span class="tag">把握 ${g.conviction || '—'}</span>
+            <span class="t-dim">${g.as_of || ''} · ${g.slug}</span></div>
+          <div class="why"><b>${g.title}</b></div>
+          ${g.first_hand ? `<div class="why t-cyan">一手 · ${g.first_hand}</div>` : ''}
+          ${g.market_view ? `<div class="why">市场 · ${g.market_view}</div>` : ''}
+          ${g.investment ? `<div class="why">怎么用 · ${g.investment}</div>` : ''}
+        </div>`).join('') : empty('没有对得上的分歧记录。')}
+
+      <div class="cap" style="margin:12px 0 5px">③ 已有信念（${d.beliefs.length}）· 有人已经在赌了吗</div>
+      ${d.beliefs.length ? d.beliefs.map(b=>`
+        <div class="gap-item">
+          <div class="gt"><span class="tag">${b.section || ''}</span>
+            <span class="tag ${(b.against||0) >= (b.evidence||0) ? 'rose' : ''}">证据 ${b.evidence} · 反方 ${b.against}</span>
+            ${b.stale ? '<span class="tag rose">🥶 已陈旧</span>' : ''}</div>
+          <div class="why">${b.title}</div>
+          <div class="why t-dim">${b.id}${b.gap ? ' · 来源 ' + b.gap : ''}</div>
+        </div>`).join('') : empty('账本里还没人对这件事立过信念 —— 那这条投稿本身就该变成第一条。')}
+
+      <div class="cap" style="margin:12px 0 5px">④ 手上的料（${d.docs_total} 份，最新 ${d.docs_latest || '—'}）</div>
+      ${d.docs.length ? d.docs.slice(0, 8).map(x=>`
+        <div class="gap-item"><div class="why">
+          <span class="tag ${x.grade === 'A' ? 'gold' : ''}">${x.grade || '?'}</span>
+          <span class="t-dim">${x.date} · ${x.type}</span><br>${x.title}</div></div>`).join('')
+        : empty('本机一份沾边的材料都没有。先弄料，再谈研究。')}
+
+      <div class="cap" style="margin:12px 0 5px">⑤ 该问什么 · 锚点「${iq.anchor || '—'}」</div>
+      ${layers.length ? layers.map(l=>`
+        <div class="gap-item">
+          <div class="gt"><span class="tag gold">${l.layer}</span></div>
+          ${(l.qs || []).slice(0, 3).map(x=>`<div class="why">· ${x.q || x}</div>`).join('')}
+        </div>`).join('')
+        : empty('本机纪要里没有这个话题的问答可蒸馏 —— 说明这块还没人系统问过。')}
+      <div class="t-xs t-dim" style="font-weight:700;margin-top:4px">
+        问题是从真实纪要问答里蒸馏的，不是问题模板。</div>
+
+      <div class="cap" style="margin:12px 0 5px">⑥ 下一步</div>
+      ${d.next.map(n=>`
+        <div class="gap-item"><div class="why" style="color:var(--ink)">
+          <b>${n.do}</b><br><code>${n.how}</code><br>
+          <span class="t-dim">${n.why}</span></div></div>`).join('')}
+
+      <div class="cap" style="margin:12px 0 5px">⑦ 派给谁</div>
+      ${(d.who || []).length ? `<div class="row wrap" style="gap:5px">
+          ${d.who.map(w=>`<span class="tag cyan" title="${w.style} · 命中 ${w.hit.join('、')}">${w.n}</span>`).join('')}
+        </div>` : empty(d.who_note || '没有对口的。')}
+
+      <div class="row" style="gap:6px;margin-top:13px">
+        ${d.wiki.length ? `<button class="px-btn on dotted" data-wbwiki="${d.wiki[0].slug}">📖 打开 ${d.wiki[0].slug}</button>` : ''}
+        ${d.id ? `<button class="px-btn ghost" id="wbDone">✓ 这条办完了</button>` : ''}
+      </div>
+      <div class="t-xs t-dim" style="font-weight:700;margin-top:9px;line-height:1.7">
+        工作台只负责把料摆齐，<b>不替你下判断</b>。要真做这个研究，按上面⑥的命令在本地跑。</div>
+    </div>`;
+  $('#mClose2').onclick = closeModal;
+  $$('[data-wbwiki]').forEach(b=> b.onclick = ()=>{
+    closeModal();
+    if(typeof openWikiPage === 'function') openWikiPage(b.dataset.wbwiki);
+  });
+  const dn = $('#wbDone');
+  if(dn) dn.onclick = async ()=>{
+    await fetch(BRIDGE + '/api/sub_status?key=' + encodeURIComponent(VAULT.key), {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({id: d.id, status:'done'})}).catch(()=>{});
+    closeModal(); await loadPipeline(true); drawKanban();
+    toast('已从选题队列移出');
   };
 }
 
@@ -159,7 +296,8 @@ function drawKanban(){
 function pipeCard(t, stage){
   const hot = t.stale || (t.against != null && t.evidence != null && t.against >= t.evidence);
   const line2 =
-    t.evidence != null ? `证据 ${t.evidence} · 反方 ${t.against}${t.last_evidence ? ' · ' + t.last_evidence : ''}`
+    t.sub ? `${t.date} · 老板投稿 · 点开进工作台`
+    : t.evidence != null ? `证据 ${t.evidence} · 反方 ${t.against}${t.last_evidence ? ' · ' + t.last_evidence : ''}`
     : t.gross ? `占本金 ${t.gross} · ${t.holders || ''}`
     : t.weight != null ? `${(t.weight * 100).toFixed(1)}% · ${t.who || ''}`
     : t.empty ? `${t.who} · 空仓`
@@ -182,6 +320,8 @@ function pipeFind(id){
 /* 点开 = 这个课题的真实档案。全是原文字段，不是我写的摘要。 */
 function openPipeCard(id){
   const t = pipeFind(id); if(!t) return;
+  /* 老板自己投的选题 → 进研究工作台，那里才有「下一步该干嘛」 */
+  if(t.sub) return openWorkbench(t.id);
   const row = (k, v)=> v ? `<div class="row" style="justify-content:space-between;gap:10px;
       border-bottom:2px dotted rgba(63,43,35,.22);padding:4px 0">
       <span class="t-xs t-dim" style="font-weight:700;min-width:64px">${k}</span>

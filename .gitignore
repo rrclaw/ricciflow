@@ -12,3 +12,4 @@ bridge/src_config.json
 bridge/cache/
 bridge/npc/*.json
 bridge/boss.secret
+bridge/inbox.jsonl
