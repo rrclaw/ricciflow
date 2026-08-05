@@ -453,7 +453,10 @@ def finance():
         who = PROJ_MAP.get(r["project"])
         item = {"project": r["project"], "msgs": r["msgs"], "tokens": r["tokens"],
                 "out_tokens": r["out_tokens"], "usd": r["usd"], "cny": r["cny"],
+                "t_in": r["t_in"], "t_out": r["t_out"], "t_cw": r["t_cw"], "t_cr": r["t_cr"],
+                "cost": r["cost"], "cache_hit": r["cache_hit"],
                 "first": r["first"], "last": r["last"],
+                "models": r["models"],
                 "top_model": max(r["models"], key=r["models"].get) if r["models"] else ""}
         if who:
             item["id"] = who
@@ -483,8 +486,13 @@ def finance():
             "total_usd": s["total_usd"], "total_cny": round(s["total_usd"] * rate, 2),
             "salary_usd": round(sum(x["usd"] for x in salaries), 2),
             "overhead_usd": round(sum(x["usd"] for x in overhead), 2),
-            "note": "按公开价目表折算：opus 15/75、sonnet 3/15、haiku 1/5 USD/1M；"
-                    "缓存写入按 1h=2x / 5m=1.25x 拆档，读取 0.1x。已按 message.id+requestId 去重。"}
+            "prices": {t: {"in": p["in"], "out": p["out"],
+                           "cache_write_1h": round(p["in"] * 2.0, 2),
+                           "cache_write_5m": round(p["in"] * 1.25, 2),
+                           "cache_read": round(p["in"] * 0.1, 3)}
+                       for t, p in token_ledger.PRICES.items()},
+            "note": "逐条精算：输入/输出各自单价，缓存写入按 1h=2x / 5m=1.25x 拆档，"
+                    "缓存读取 0.1x。已按 message.id+requestId 去重、排除 <synthetic>。"}
 
 
 if __name__ == "__main__":

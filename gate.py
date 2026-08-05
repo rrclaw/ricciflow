@@ -6,6 +6,7 @@
 """
 import asyncio
 import functools
+import json as _json
 import http.server
 import sys
 import threading
@@ -257,8 +258,14 @@ async def main():
         await page.click("#panelClose")
 
         # ---------- 三楼资料库 / 保险库 / 机房 ----------
-        real_key = (ROOT / "bridge" / "boss.key")
-        vkey = real_key.read_text().strip() if real_key.exists() else "246810"
+        # 钥匙每天一换，现算今天那把（bosskey.py --json 最后一行）
+        import subprocess as _sp0
+        _r0 = _sp0.run([sys.executable, str(ROOT / "bridge" / "bosskey.py"), "--json"],
+                       capture_output=True, text=True)
+        try:
+            vkey = _json.loads(_r0.stdout.strip().splitlines()[-1])["key"]
+        except Exception:
+            vkey = "246810"
         await page.evaluate("localStorage.removeItem('rf_boss_key'); VAULT.key=''; VAULT.live=false")
         await page.evaluate("openBuildingBrowser('media')"); await page.wait_for_timeout(300)
         check(await page.locator("text=保安亭").count() == 1, "没钥匙 → 保安拦截")
@@ -285,9 +292,16 @@ async def main():
         live_insight = await page.locator("text=🟢 实时").count()
         print(("  ok   灵感流 = search_alpha 实时" if live_insight else "  ok   灵感流回落（桥未跑，非硬失败）"))
         # 提问台：设钥匙后点「怎么问」
-        real_key = (ROOT / "bridge" / "boss.key")
-        if real_key.exists():
-            vkey = real_key.read_text().strip()
+        # 钥匙每天一换，现算今天那把
+        import subprocess as _sp
+        _r = _sp.run([sys.executable, str(ROOT / "bridge" / "bosskey.py"), "--json"],
+                     capture_output=True, text=True)
+        vkey = ""
+        try:
+            vkey = _json.loads(_r.stdout.strip().splitlines()[-1])["key"]
+        except Exception:
+            pass
+        if vkey:
             await page.evaluate(f"VAULT.key='{vkey}'; localStorage.setItem('rf_boss_key','{vkey}')")
             btn = await page.query_selector("[data-ins-ask]")
             if btn:
@@ -331,7 +345,6 @@ async def main():
             await page.evaluate("closePanel()")
         # 出处表里的路径必须真实存在
         prov = await page.evaluate("JSON.stringify(PROVENANCE)")
-        import json as _json
         for cid, meta in _json.loads(prov).items():
             for label, raw in meta["reads"]:
                 if not raw:

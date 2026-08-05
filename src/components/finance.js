@@ -37,32 +37,64 @@ function renderRealFinance(root){
       <span class="tools"><span class="tag cyan" title="${F.note}">实账 · ${F.built_at}</span></span>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start">
-      ${win('研究员薪资单 · 按真实 token 消耗', `
-        <table style="width:100%;font-size:11.5px;border-collapse:collapse">
+      ${win('研究员薪资单 · 逐条按真实用量计价', `
+        <table style="width:100%;font-size:11px;border-collapse:collapse">
           <tr style="font-weight:700;color:var(--dim)">
-            <td>研究员</td><td>主用模型</td><td style="text-align:right">tokens</td>
-            <td style="text-align:right">折算薪资</td><td style="text-align:right">在册</td></tr>
+            <td>研究员</td><td>主用模型</td>
+            <td style="text-align:right" title="新输入 token">输入</td>
+            <td style="text-align:right" title="生成 token，单价最贵">输出</td>
+            <td style="text-align:right" title="缓存写入，比普通输入贵">缓存写</td>
+            <td style="text-align:right" title="缓存读取，只要基础价的 1/10">缓存读</td>
+            <td style="text-align:right" title="缓存读取占全部输入侧的比例">命中率</td>
+            <td style="text-align:right">折算薪资</td></tr>
           ${F.salaries.map(x=>{
-            const r = byId[x.id] || {};
+            const r = byId[x.id] || {}, c = x.cost || {};
             return `<tr style="border-top:2px dotted rgba(63,43,35,.25)">
               <td style="padding:5px 0;font-weight:700">${x.n}
                 ${r.status ? `<span class="tag ${REAL_STATUS_TAG[r.status.code]||''}">${r.status.label}</span>` : ''}</td>
               <td class="t-xs">${(x.top_model||'').replace('claude-','').replace(/-\d{8}$/,'')}</td>
-              <td style="text-align:right">${tok(x.tokens)}</td>
-              <td style="text-align:right;font-weight:700">${cny(x.usd)}</td>
-              <td style="text-align:right" class="t-xs t-dim">${x.first}→${x.last}</td></tr>`;
+              <td style="text-align:right" title="${cny(c.in||0)}">${tok(x.t_in)}</td>
+              <td style="text-align:right;font-weight:700" title="${cny(c.out||0)}">${tok(x.t_out)}</td>
+              <td style="text-align:right" title="${cny(c.cw||0)}">${tok(x.t_cw)}</td>
+              <td style="text-align:right;color:var(--dim)" title="${cny(c.cr||0)}">${tok(x.t_cr)}</td>
+              <td style="text-align:right" class="${x.cache_hit>=0.9?'t-cyan':''}">${(x.cache_hit*100).toFixed(0)}%</td>
+              <td style="text-align:right;font-weight:700">${cny(x.usd)}</td></tr>`;
           }).join('')}
           <tr style="border-top:3px solid var(--ink);font-weight:700">
-            <td style="padding:6px 0">薪资合计</td><td></td><td></td>
-            <td style="text-align:right">${cny(F.salary_usd)}</td><td></td></tr>
+            <td style="padding:6px 0">薪资合计</td><td colspan="6"></td>
+            <td style="text-align:right">${cny(F.salary_usd)}</td></tr>
         </table>
+        <div class="t-xs t-dim" style="font-weight:700;margin-top:8px;line-height:1.8">
+          鼠标停在数字上看那一类花了多少钱。<b>四类 token 单价不同</b>，
+          所以「消耗多」不等于「花得多」——
+          缓存读取只要基础价的 1/10，命中率高的那几位其实很省。</div>
         <div class="bridge" style="margin-top:9px">
           只有自己开过工作目录的策略才有独立账单。以下 ${F.no_bill.length} 位<b>没有独立账单</b>，
-          他们的开销混在研究部公共开销里，拆不出来：
+          开销混在研究部公共开销里，拆不出来：
           <span class="t-dim">${F.no_bill.map(x=>x.n).join('、')}</span>。
-          <br>拆不出来就写拆不出来，不按人头摊派。</div>
-        <div class="t-xs t-dim" style="font-weight:700;margin-top:7px;line-height:1.7">${F.note}</div>`,
-        {color:'teal', sub:'嘴上的成本，真的'})}
+          拆不出来就写拆不出来，不按人头摊派。</div>`,
+        {color:'teal', sub:'四类 token 分开计价'})}
+      ${win('单价表 · USD / 1M tokens', `
+        <table style="width:100%;font-size:11px;border-collapse:collapse">
+          <tr style="font-weight:700;color:var(--dim)">
+            <td>档位</td><td style="text-align:right">输入</td><td style="text-align:right">输出</td>
+            <td style="text-align:right">缓存写 1h</td><td style="text-align:right">缓存写 5m</td>
+            <td style="text-align:right">缓存读</td></tr>
+          ${Object.entries(F.prices || {}).map(([t, p])=>`
+            <tr style="border-top:2px dotted rgba(63,43,35,.25)">
+              <td style="padding:4px 0;font-weight:700">${t}</td>
+              <td style="text-align:right">${p.in}</td>
+              <td style="text-align:right"><b>${p.out}</b></td>
+              <td style="text-align:right">${p.cache_write_1h}</td>
+              <td style="text-align:right">${p.cache_write_5m}</td>
+              <td style="text-align:right" class="t-cyan">${p.cache_read}</td></tr>`).join('')}
+        </table>
+        <div class="t-xs t-dim" style="font-weight:700;margin-top:8px;line-height:1.8">
+          输出是输入的 5 倍价；缓存写入比普通输入还贵（1h 档 2 倍、5m 档 1.25 倍），
+          但读取只要 1/10。所以<b>长会话一次写、多次读</b>是最省的形状，
+          反复重开新会话最烧钱。<br>
+          <span class="t-rose">未列出的模型按同档兜底，账面会标出来，不假装知道。</span></div>`,
+        {color:'sky', sub:'公开价目表'})}
       <div class="col">
         ${win('公司总成本 · 按项目', F.overhead.map(x=>`
           <div class="cover-meter" style="grid-template-columns:150px 1fr 96px">

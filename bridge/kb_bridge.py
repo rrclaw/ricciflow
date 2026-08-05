@@ -31,11 +31,9 @@ except Exception as _e:
     distill = None
     print("[warn] distill 模块未就绪:", _e)
 
-def _gen_key():
-    return "".join(random.SystemRandom().choice("0123456789") for _ in range(10))
-if not KEY_FILE.exists() or len(KEY_FILE.read_text().strip()) < 10:
-    KEY_FILE.write_text(_gen_key())          # 公网可达 → 至少 10 位
-BOSS_KEY = KEY_FILE.read_text().strip()
+# 钥匙每天一换，由 boss.secret 派生，服务端不存任何一把 —— 见 bosskey.py。
+# 旧的静态 boss.key 已不被信任：存进浏览器就永远有效，泄漏也不会自己失效。
+import bosskey
 
 # 暴力破解防线：每 IP 连错 5 次封 15 分钟
 FAILS = {}          # ip -> [count, banned_until]
@@ -157,7 +155,7 @@ class H(http.server.BaseHTTPRequestHandler):
         q = parse_qs(urlparse(self.path).query)
         tok = (self.headers.get("Authorization", "").replace("Bearer ", "") or
                (q.get("key") or [""])[0])
-        ok = hmac.compare_digest(tok, BOSS_KEY)
+        ok = bosskey.check(tok)
         if ok: ip_pass(ip)
         elif tok: ip_fail(ip)
         return ok
@@ -430,6 +428,7 @@ if __name__ == "__main__":
     inv = {}
     for d in DOCS.values(): inv[d["building"]] = inv.get(d["building"], 0) + 1
     print(f"kb-bridge 就绪 · 共 {len(DOCS)} 份文档 · 楼宇库存: {inv}")
-    print(f"老板钥匙（保险库转盘密码）: {BOSS_KEY}")
+    print(f"今日老板钥匙: {bosskey.key_for(bosskey.today())}（{bosskey.today()}，零点自动换）")
+    print("  拿钥匙: python3.11 bridge/bosskey.py")
     print(f"http://127.0.0.1:{PORT}  · 只读 ~/knowledge · Ctrl-C 停")
     http.server.ThreadingHTTPServer(("127.0.0.1", PORT), H).serve_forever()

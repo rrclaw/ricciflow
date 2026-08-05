@@ -10,7 +10,26 @@ const BLDG = {
 };
 const BRIDGE = (location.hostname === '127.0.0.1' || location.hostname === 'localhost' || location.protocol === 'file:')
   ? 'http://127.0.0.1:8331' : '/kbapi';
-let VAULT = { key: localStorage.getItem('rf_boss_key') || '', live: false, checked: false };
+/* 钥匙每天一换。存的时候连日期一起存，跨天自动作废 ——
+   不然浏览器里那把昨天的会一直躺着，每次刷新都去撞一次桥的失败计数。 */
+function _todayStr(){
+  /* 手算，不靠 toLocaleDateString 的 locale —— 不同运行环境给的格式不一样，
+     一旦格式变了就会天天把有效钥匙判成过期。 */
+  const d = new Date();
+  const p2 = n=> String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate());
+}
+function _loadKey(){
+  const k = localStorage.getItem('rf_boss_key') || '';
+  const d = localStorage.getItem('rf_boss_key_day') || '';
+  if(k && d !== _todayStr()){
+    localStorage.removeItem('rf_boss_key');
+    localStorage.removeItem('rf_boss_key_day');
+    return '';
+  }
+  return k;
+}
+let VAULT = { key: _loadKey(), live: false, checked: false, expired: false };
 
 async function vaultProbe(){
   try {
@@ -34,8 +53,11 @@ function openVault(onOk){
       <div class="vault-pad">
         ${[1,2,3,4,5,6,7,8,9,'C',0,'⏎'].map(k=>`<button class="vault-key" data-vk="${k}">${k}</button>`).join('')}
       </div>
-      <div class="t-xs t-dim" style="font-weight:700;margin-top:9px;line-height:1.7" id="vaultHint">
-        老板钥匙 10 位（kb-bridge 启动时打印在你的终端）。<br>公网也认：验证走 TLS，连错 5 次封 IP 15 分钟。<br>没跑桥？随便输 ≥4 位进演示模式。</div>
+      <div class="t-xs t-dim" style="font-weight:700;margin-top:9px;line-height:1.8" id="vaultHint">
+        <b>密码每天一换</b>，只能在这台机器的终端上拿：<br>
+        <code>python3.11 bridge/bosskey.py</code><br>
+        本地零点自动换新（凌晨 4 点前旧的还收）。派生密钥只在本机，不进 git、不上公网。<br>
+        <span class="t-rose">连错 5 次封 IP 15 分钟。</span></div>
     </div>`);
   $('#mClose').onclick = closeModal;
   const disp = ()=> $('#vaultDisp').textContent =
@@ -49,6 +71,7 @@ function openVault(onOk){
       if(buf.length < 4) return toast('钥匙至少 4 位');
       VAULT.key = buf;
       localStorage.setItem('rf_boss_key', buf);
+      localStorage.setItem('rf_boss_key_day', _todayStr());
       $('#vaultHint').innerHTML = '验证中…';
       const h = await vaultProbe();
       closeModal();
@@ -62,7 +85,8 @@ function openVault(onOk){
         });
       } else if(h && !h.auth){
         VAULT.key = ''; localStorage.removeItem('rf_boss_key');
-        toast('钥匙不对。保安面无表情地看着你');
+        localStorage.removeItem('rf_boss_key_day');
+        toast('钥匙不对。密码每天一换，去终端跑 python3.11 bridge/bosskey.py 拿今天的');
         return;
       } else {
         toast('🔓 演示模式解锁（本地桥未运行，看的是样例数据）');

@@ -29,12 +29,17 @@ async function renderInsightFeed(mount){
   box.innerHTML = '<div class="t-dim" style="font-weight:700;padding:8px">扫描机构搜索热度…</div>';
   const d = await insightFetch();
   const methodAll = d.live
-    ? `热搜=机构搜索关键词周环比（本周 vs 上周），取涨最快 + 本周新起。🔥数=热度分级。数据截至 ${d.as_of||''}。实时源 aihot/polymarket 接入中。`
-    : '本地桥未运行，显示演示占位。跑起 kb-bridge 即为真实机构热搜。';
+    ? `五路融合：机构搜索关键词周环比（本周 vs 上周，取涨最快 + 本周新起）`
+      + ` · aihot 今日 AI 日报 · Polymarket 24h 成交榜（已剔除体育/电竞盘）`
+      + ` · TMT Breakout · substack 深度。🔥数=热度分级。机构热搜数据截至 ${d.as_of||'—'}。`
+    : '本地桥未运行。这里不放演示占位 —— 跑起 kb-bridge 才有内容。';
   box.innerHTML = `
     <div class="row" style="margin-bottom:7px">
       <span class="tag ${d.live?'cyan':'rose'}">${d.live?'🟢 实时':'演示'}</span>
       ${infoDot(methodAll)}
+      ${srcStatusHTML(d)}
+      ${d.kw_stale ? `<span class="tag rose"
+        title="机构搜索是周更源，本地副本是桌面 CSV 的拷贝；${d.kw_fix||''}">机构热搜已 ${d.kw_age_days} 天没更新</span>` : ''}
       <span class="sp"></span>
       <button class="px-btn sm ghost" id="cluePool">≡ 线索池 ${DATA.clues.length}</button>
       <button class="px-btn sm ghost" id="insightRefresh">↻</button></div>` +
@@ -97,4 +102,20 @@ async function renderInsightFeed(mount){
       DATA.clues.splice(+b.dataset.clueDel, 1); openCluePool(); renderInsightFeed(mount);
     });
   }
+}
+
+
+/* 五路源的当轮状态。哪个掉了、为什么掉，摆出来 ——
+   静默消失最坑：看着像「那个源今天没东西」，其实是被超时砍了。 */
+const SRC_LABEL = {aihot:'aihot', poly:'Polymarket', tmt:'TMT Breakout',
+                   sub:'substack', reddit:'Reddit'};
+function srcStatusHTML(d){
+  const S = d.sources || {};
+  const keys = Object.keys(SRC_LABEL).filter(k=> S[k]);
+  if(!keys.length) return '';
+  const bad = keys.filter(k=> !S[k].ok);
+  if(!bad.length)
+    return `<span class="tag cyan" title="${keys.map(k=> SRC_LABEL[k] + ' ' + S[k].n + ' 条').join(' · ')}">五路全通</span>`;
+  return `<span class="tag gold" title="${bad.map(k=> SRC_LABEL[k] + '：' + S[k].why).join('\n')}">${
+    bad.map(k=> SRC_LABEL[k]).join('/')} 这轮没进来</span>`;
 }

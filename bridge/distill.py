@@ -96,6 +96,17 @@ def _insight_compute(n=2):
     cur = _read_kw(cur_path)
     out["source"] = f"机构搜索热度周环比 · 截至 {cur_date}"
     out["as_of"] = cur_date
+    # 这份数据是桌面 CSV 的本地副本（launchd 后台读不到桌面，只能前台同步）。
+    # 不同步就会悄悄停在某一周 —— 所以把「多久没更新」算出来交给界面，
+    # 让它自己喊，而不是等人发现「怎么还是上个月的话题」。
+    try:
+        import time as _t
+        _age = int((_t.time() - _t.mktime(_t.strptime(cur_date, "%Y-%m-%d"))) / 86400)
+    except Exception:
+        _age = None
+    out["kw_age_days"] = _age
+    out["kw_stale"] = bool(_age is not None and _age > 8)   # 周更，超过 8 天就是漏同步了
+    out["kw_fix"] = "在终端跑一次 ./bridge/sync_kw.sh 把桌面最新 CSV 同步过来"
     STOP = {"模型", "谷歌", "AMD", "英伟达", "苹果", "股票", "美股", "A股", "港股", "大盘", "指数"}
     ranked = []
     for k, v in cur.items():
@@ -125,20 +136,36 @@ def _insight_compute(n=2):
         })
     # 机构榜取 n；再各融 aihot / polymarket，让灵感流有真·今日源
     out["items"] = out["items"][:n]
+    # 五路实时源并发取。慢的那个（substack 常年 15-20s）以前会被逐个 10s 超时砍掉，
+    # 而且砍掉之后界面上一点痕迹都没有 —— 看着就像那个源「今天没东西」。
+    # 改成共享总预算 + 逐源记状态，谁掉了、为什么掉，都摆到台面上。
+    out["sources"] = {}
     if realtime:
+        import time as _t
         from concurrent.futures import ThreadPoolExecutor
         jobs = {"aihot": lambda: realtime.aihot_today(2),
                 "poly": lambda: realtime.polymarket_hot(2),
                 "tmt": lambda: realtime.tmtbreakout_today(2),
                 "sub": lambda: realtime.substack_configured(2),
                 "reddit": lambda: realtime.reddit_hot(2)}
-        with ThreadPoolExecutor(max_workers=5) as ex:
-            futs = {k: ex.submit(f) for k, f in jobs.items()}
-            for k in ["aihot", "poly", "tmt", "sub", "reddit"]:
-                try:
-                    r = futs[k].result(timeout=10)
-                    if r.get("ok"): out["items"] += r["items"]
-                except Exception: pass
+        BUDGET = 28.0                      # 总预算，不是每个源各 28 秒
+        t0 = _t.time()
+        ex = ThreadPoolExecutor(max_workers=5)
+        futs = {k: ex.submit(f) for k, f in jobs.items()}
+        for k in ["aihot", "poly", "tmt", "sub", "reddit"]:
+            left = BUDGET - (_t.time() - t0)
+            try:
+                r = futs[k].result(timeout=max(0.5, left))
+                if r.get("ok") and r.get("items"):
+                    out["items"] += r["items"]
+                    out["sources"][k] = {"ok": True, "n": len(r["items"])}
+                else:
+                    out["sources"][k] = {"ok": False,
+                                         "why": r.get("error") or "这一轮没返回条目"}
+            except Exception as e:
+                out["sources"][k] = {"ok": False,
+                                     "why": f"超时或报错（{type(e).__name__}）"}
+        ex.shutdown(wait=False)
     # ── 统一后处理：去重 / 引子补全 / 引子中文化 / 热度重分级 ──
     items = out["items"]
     # a) 同 theme 去重（保留热度高的）

@@ -49,12 +49,28 @@ def aihot_today(n=3):
     except Exception as e:
         return {"ok": False, "error": f"{type(e).__name__}: {e}", "items": []}
 
+# 体育/电竞/娱乐盘成交额常年很大，但对投研没有信息量 —— 灵感流要的是
+# 宏观/政策/科技事件，所以按关键词剔掉。宁可少几条，不要拿 Dota 盘凑数。
+POLY_SKIP = [
+    " vs ", "dota", "csgo", "cs2", "league of legends", "lol ", "valorant",
+    "nba", "nfl", "mlb", "nhl", "ufc", "soccer", "football", "premier league",
+    "la liga", "serie a", "bundesliga", "champions league", "tennis", "golf",
+    "f1 ", "formula 1", "olympic", "world cup", "super bowl", "esports",
+    "grammy", "oscar", "emmy", "eurovision", "box office", "rotten tomatoes",
+]
+
+
+def _poly_noise(q):
+    low = (q or "").lower()
+    return any(w in low for w in POLY_SKIP)
+
+
 def polymarket_hot(n=3):
     """预测市场 24h 成交额最高 → 今日全球在赌什么（宏观/事件热点）"""
     out = []
     try:
         url = ("https://gamma-api.polymarket.com/markets?closed=false"
-               "&order=volume24hr&ascending=false&limit=12")
+               "&order=volume24hr&ascending=false&limit=40")   # 剔噪后仍要够 n 条
         ms = _get(url)
         ms = ms if isinstance(ms, list) else ms.get("data", [])
         for m in ms:
@@ -62,7 +78,7 @@ def polymarket_hot(n=3):
             v = m.get("volume24hr") or m.get("volumeNum") or 0
             try: v = float(v)
             except: v = 0
-            if not q or v < 100000:
+            if not q or v < 100000 or _poly_noise(q):
                 continue
             out.append({
                 "theme": _lead_entity(q), "topic": q[:56],

@@ -177,15 +177,45 @@ def load(max_age=3600):
     return build()
 
 
+def _split_cost(a):
+    """把这一桶的花费按四类拆开。
+
+    口径与 price_of() 一致：输入/输出各自单价，缓存写入按 1h=2x / 5m=1.25x，
+    缓存读取 0.1x。桶里可能混了多个模型，所以用该桶的加权均价近似分摊 ——
+    分摊只影响「构成占比」怎么显示，总额仍是逐条精算加出来的，不会因此变。
+    """
+    tot = 0.0
+    parts = {"in": 0.0, "out": 0.0, "cw": 0.0, "cr": 0.0}
+    models = a.get("models") or {}
+    n = sum(models.values()) or 1
+    for m, cnt in models.items():
+        p = PRICES[tier_of(m)]
+        w = cnt / n
+        parts["in"] += a["in"] * p["in"] * w
+        parts["out"] += a["out"] * p["out"] * w
+        parts["cw"] += a["cw"] * p["in"] * CACHE_WRITE_5M * w
+        parts["cr"] += a["cr"] * p["in"] * CACHE_READ * w
+    tot = sum(parts.values()) / 1_000_000 or 1e-9
+    return {k: round(v / 1_000_000, 2) for k, v in parts.items()}, tot
+
+
 def summary():
     d = load()
     rows = []
     for name, a in d["projects"].items():
         if not a.get("msgs"):
             continue
+        cost_parts, _ = _split_cost(a)
+        total_in = a["in"] + a["cw"] + a["cr"]
         rows.append({"project": name, "msgs": a["msgs"],
                      "tokens": a["in"] + a["out"] + a["cw"] + a["cr"],
-                     "out_tokens": a["out"], "usd": round(a["usd"], 2),
+                     "out_tokens": a["out"],
+                     # 四类 token 与各自花费，界面照这个摊开
+                     "t_in": a["in"], "t_out": a["out"], "t_cw": a["cw"], "t_cr": a["cr"],
+                     "cost": cost_parts,
+                     # 缓存命中率 = 缓存读取 ÷ 全部输入侧 token。越高越省钱
+                     "cache_hit": round(a["cr"] / total_in, 4) if total_in else 0,
+                     "usd": round(a["usd"], 2),
                      "cny": round(a["usd"] * d["usd_cny"], 2),
                      "first": a.get("first", ""), "last": a.get("last", ""),
                      "models": a.get("models", {}), "skills": a.get("skills", {})})

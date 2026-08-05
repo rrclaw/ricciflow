@@ -157,7 +157,8 @@ function drawDataState(){
           (typeof REAL !== 'undefined' && REAL.err ? '（' + REAL.err + '）' : '');
   } else {
     cls = ''; txt = '公开层';
-    tip = '未插钥匙：只显示不敏感的真实数据，机密部分上锁。点这里输密码';
+    tip = '未插钥匙：只显示不敏感的真实数据，机密部分上锁。'
+        + '密码每天一换，终端跑 python3.11 bridge/bosskey.py 拿今天的';
   }
   el2.innerHTML = `<span class="tag ${cls}" title="${tip}" style="cursor:pointer">${txt}</span>`;
   el2.onclick = ()=>{
