@@ -139,7 +139,7 @@ function researcherCard(r){
         ? r.inbox.map(t=>`<span class="taskchip">▸ ${t}</span>`).join('')
         : `<div class="t-xs t-dim" style="margin-top:3px" id="inboxEmpty-${r.id}">空 · 可从知识库缺口派单过来</div>`}
     </div>`;
-  return win(r.n, body, {color, cls:'rcard', sub:'LV.'+r.lv});
+  return win(r.n, body, {color, cls:'rcard', sub: r.lv == null ? '\ud83d\udd12' : 'LV.'+r.lv});
 }
 
 function reviewBlock(r){
@@ -667,7 +667,7 @@ async function doPull(){
     ${avatarHTML(c.sp,'s4')}
     <b style="font-size:14px">${c.n}</b>
     <div class="t-xs t-dim" style="font-weight:700;text-align:center;padding:0 8px">${c.proto}</div>
-    <div class="t-xs" style="font-weight:700">信任 ${c.trust} · LV.${c.lv}</div>`;
+    <div class="t-xs" style="font-weight:700">信任 ${c.trust == null ? '—' : c.trust} · ${c.lv == null ? '\ud83d\udd12' : 'LV.'+c.lv}</div>`;
   /* 签约区 */
   let bar = $('#gachaSign');
   if(!bar){

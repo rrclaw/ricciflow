@@ -171,7 +171,7 @@ function drawWorkbench(d){
           <div class="gt">
             <span class="tag ${w.docs > 20 ? 'gold' : w.docs ? '' : 'rose'}">${w.docs} 份材料</span>
             ${w.stance ? `<span class="tag ${w.stance==='bullish'?'cyan':''}">${w.stance}</span>` : ''}
-            <span><b>${w.title}</b> <span class="t-dim">${w.slug}</span></span></div>
+            <span><b>${esc(w.title)}</b> <span class="t-dim">${w.slug}</span></span></div>
           <div class="why">命中 ${w.hit.join('、')} · 缺口 ${w.gaps} 条 · 最近材料 ${w.fresh} 天前</div>
         </div>`).join('')
         : empty('一页都没对上 —— <b>这本身就是结论</b>：这块是本机的空白，得从建页开始。')}
@@ -182,9 +182,9 @@ function drawWorkbench(d){
           <div class="gt"><span class="tag ${g.type === '🔴' ? 'rose' : 'gold'}">${g.type_name || ''}</span>
             <span class="tag">把握 ${g.conviction || '—'}</span>
             <span class="t-dim">${g.as_of || ''} · ${g.slug}</span></div>
-          <div class="why"><b>${g.title}</b></div>
-          ${g.first_hand ? `<div class="why t-cyan">一手 · ${g.first_hand}</div>` : ''}
-          ${g.market_view ? `<div class="why">市场 · ${g.market_view}</div>` : ''}
+          <div class="why"><b>${esc(g.title)}</b></div>
+          ${g.first_hand ? `<div class="why t-cyan">一手 · ${esc(g.first_hand)}</div>` : ''}
+          ${g.market_view ? `<div class="why">市场 · ${esc(g.market_view)}</div>` : ''}
           ${g.investment ? `<div class="why">怎么用 · ${g.investment}</div>` : ''}
         </div>`).join('') : empty('没有对得上的分歧记录。')}
 
@@ -192,9 +192,9 @@ function drawWorkbench(d){
       ${d.beliefs.length ? d.beliefs.map(b=>`
         <div class="gap-item">
           <div class="gt"><span class="tag">${b.section || ''}</span>
-            <span class="tag ${(b.against||0) >= (b.evidence||0) ? 'rose' : ''}">证据 ${b.evidence} · 反方 ${b.against}</span>
+            <span class="tag ${(b.against||0) >= (b.evidence||0) ? 'rose' : ''}">证据 ${esc(b.evidence)} · 反方 ${b.against}</span>
             ${b.stale ? '<span class="tag rose">🥶 已陈旧</span>' : ''}</div>
-          <div class="why">${b.title}</div>
+          <div class="why">${esc(b.title)}</div>
           <div class="why t-dim">${b.id}${b.gap ? ' · 来源 ' + b.gap : ''}</div>
         </div>`).join('') : empty('账本里还没人对这件事立过信念 —— 那这条投稿本身就该变成第一条。')}
 

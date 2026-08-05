@@ -61,9 +61,9 @@ async function openNpcCard(id){
   const q = x=>`<div class="gap-item">
       <div class="gt">
         <span class="tag ${KIND_TAG[x.kind] || ''}">${x.kind}</span>
-        <span class="tag ${TIER_TAG[x.tier][0]}">${x.date} · ${x.age}天前</span>
+        <span class="tag ${TIER_TAG[x.tier][0]}">${esc(x.date)} · ${x.age}天前</span>
       </div>
-      <div class="why" style="color:var(--ink);line-height:1.8">${x.text}</div>
+      <div class="why" style="color:var(--ink);line-height:1.8">${esc(x.text)}</div>
       <div class="why t-dim">${x.url
         ? '<a href="' + x.url + '" target="_blank" rel="noopener" style="color:var(--ink)">' + x.url + '</a>'
         : x.src || ''}</div>

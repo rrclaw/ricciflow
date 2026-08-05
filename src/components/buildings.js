@@ -33,10 +33,11 @@ let VAULT = { key: _loadKey(), live: false, checked: false, expired: false };
 
 async function vaultProbe(){
   try {
-    const r = await fetch(BRIDGE + '/api/health?key=' + encodeURIComponent(VAULT.key), {signal: AbortSignal.timeout(1500)});
-    const j = await r.json();
-    VAULT.live = !!(j.ok && j.auth);
-    return j;
+    // 验钥打真正的鉴权端点(200=有效)。以前靠 /api/health 回显 auth 布尔 ——
+    // 那等于给所有人白送验钥 oracle, 已从桥上拆掉。
+    const r = await fetch(BRIDGE + '/api/carried?key=' + encodeURIComponent(VAULT.key), {signal: AbortSignal.timeout(1500)});
+    VAULT.live = r.ok;
+    return r.ok ? { ok: true } : null;
   } catch(e){ VAULT.live = false; return null; }
 }
 function vaultUnlocked(){ return !!VAULT.key; }

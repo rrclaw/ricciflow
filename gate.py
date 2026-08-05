@@ -35,6 +35,27 @@ def serve():
     return httpd
 
 
+
+def check_npc_redaction():
+    """NPC 脱敏回归(2026-08-05 补)。此前 gate 从不碰 redact/leaks —— 脱敏坏了照样绿。
+
+    ① 名册必须在场: roster 缺失时 redact 失败关闭(内容全屏蔽), 安全但**测试盲区**,
+       在跑 gate 的机器上必须 FAIL 而不是静默弱化。
+    ② leaks() 对裸真名要报警(探测器活着)。
+    ③ redact() 要能消掉真名与券商名(脱敏器活着)。
+    """
+    import sys as _sys
+    _sys.path.insert(0, str(ROOT / "bridge"))
+    import npc as _npc
+    check(_npc.ROSTER_READY, "npc: roster.json 在场(缺失=脱敏未被测试, 不等于安全)")
+    if _npc.ROSTER_READY:
+        sample = next(k for r in _npc.ROSTER for k in r["keys"])
+        check(bool(_npc.leaks(sample)), "npc: leaks() 能识别裸真名")
+        check(sample not in _npc.redact(sample), "npc: redact() 能消掉真名")
+        broker = _npc.BROKERS[0]
+        check(broker not in _npc.redact(broker), "npc: redact() 能消掉券商名")
+
+
 async def main():
     SHOTS.mkdir(exist_ok=True)
     errors: list[str] = []
@@ -364,6 +385,7 @@ async def main():
             await page.evaluate("closePanel()")
 
         check(not errors, f"console error == 0（实得 {len(errors)}: {errors[:3]}）")
+        check_npc_redaction()
         await browser.close()
 
     print()

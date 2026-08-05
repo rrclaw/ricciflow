@@ -50,8 +50,8 @@ async function renderInsightFeed(mount){
           <span title="热度">${'🔥'.repeat(it.heat||1)}</span>
           ${infoDot(it.method || '')}
         </div>
-        ${it.topic?`<div class="why" style="color:var(--ink);font-weight:700">${it.topic}</div>`:''}
-        ${it.src?`<div class="t-xs" style="color:var(--dim);font-weight:700;margin-top:2px">源：${it.src}${it.vol?' · $'+it.vol+'M':''}</div>`:''}
+        ${it.topic?`<div class="why" style="color:var(--ink);font-weight:700">${esc(it.topic)}</div>`:''}
+        ${it.src?`<div class="t-xs" style="color:var(--dim);font-weight:700;margin-top:2px">源：${esc(it.src)}${it.vol?' · $'+it.vol+'M':''}</div>`:''}
         <div class="row" style="gap:4px;margin-top:4px">
           <button class="px-btn sm" data-ins-go="${it.theme}">▸ 立课题</button>
           <button class="px-btn sm ghost" data-ins-ask="${it.theme}">? 怎么问</button>

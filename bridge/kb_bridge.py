@@ -147,9 +147,9 @@ class H(http.server.BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _auth(self):
-        ip = (self.headers.get("CF-Connecting-IP") or
-              self.headers.get("X-Forwarded-For", "").split(",")[0].strip() or
-              self.client_address[0])
+        # 只信 CF-Connecting-IP(Cloudflare 注入, 客户端改不了)。
+        # X-Forwarded-For 是客户端可写头 —— 按它封禁, 攻击者每请求换一个值就永不被封。
+        ip = self.headers.get("CF-Connecting-IP") or self.client_address[0]
         if not ip_ok(ip):
             return False
         q = parse_qs(urlparse(self.path).query)
@@ -173,7 +173,8 @@ class H(http.server.BaseHTTPRequestHandler):
         self._norm()
         u = urlparse(self.path); q = parse_qs(u.query)
         if u.path == "/api/health":
-            return self._send(200, {"ok": True, "docs": len(DOCS), "auth": self._auth(),
+            # 不回 auth 布尔: 无鉴权端点回显 key 校验结果 = 白送验钥 oracle
+            return self._send(200, {"ok": True, "docs": len(DOCS),
                                     "distill": distill is not None})
         if u.path == "/api/source_peek":
             sid = (q.get("id") or [""])[0]
@@ -198,7 +199,7 @@ class H(http.server.BaseHTTPRequestHandler):
                         [{"topic": t} for t in realtime._rss_titles("https://www.tmtbreakout.com/feed")[:6]]})
                 return self._send(200, {"ok": False, "error": "该源无 peek"})
             except Exception as e:
-                return self._send(200, {"ok": False, "error": str(e)})
+                return self._send(200, {"ok": False, "error": "internal"})
         if u.path == "/api/arr":
             # 自建 ARR Tracker 的 MCP：工具目录 / 白名单序列 / 单条序列
             try:
@@ -217,13 +218,13 @@ class H(http.server.BaseHTTPRequestHandler):
                     return self._send(200, {"ok": True, **arrmcp.series(sid)})
                 return self._send(200, {"ok": False, "error": "what 只认 tools/series_list/series"})
             except Exception as e:
-                return self._send(200, {"ok": False, "error": str(e)})
+                return self._send(200, {"ok": False, "error": "internal"})
         if u.path == "/api/realtime_probe":
             try:
                 import realtime
                 return self._send(200, {"ok": True, **realtime.realtime_probe()})
             except Exception as e:
-                return self._send(200, {"ok": False, "error": str(e)})
+                return self._send(200, {"ok": False, "error": "internal"})
         if u.path == "/api/insight":
             # 灵感流：公司门面，客人也能看（真实 search_alpha 新兴主题）
             if not distill: return self._send(200, {"ok": False, "error": "distill 未就绪"})
@@ -231,7 +232,7 @@ class H(http.server.BaseHTTPRequestHandler):
                 n = int((q.get("n") or ["3"])[0])
                 return self._send(200, distill.insight_daily(n))
             except Exception as e:
-                return self._send(200, {"ok": False, "error": str(e)})
+                return self._send(200, {"ok": False, "error": "internal"})
         # ---- 公开安全子集：不含持仓/净值/薪资/原文，谁都能看 ----
         if u.path in ("/api/wiki", "/api/srcreg", "/api/roster_public"):
             try:
@@ -242,7 +243,7 @@ class H(http.server.BaseHTTPRequestHandler):
                 return self._send(200, kbreal.wiki_list() if u.path == "/api/wiki"
                                   else kbreal.source_registry())
             except Exception as e:
-                return self._send(200, {"ok": False, "error": str(e)})
+                return self._send(200, {"ok": False, "error": "internal"})
         if not self._auth():
             return self._send(401, {"error": "老板钥匙不对。保安请你去前台喝茶"})
         if u.path == "/api/inquiry":
@@ -255,7 +256,7 @@ class H(http.server.BaseHTTPRequestHandler):
                 r["ok"] = True
                 return self._send(200, r)
             except Exception as e:
-                return self._send(200, {"ok": False, "error": str(e)})
+                return self._send(200, {"ok": False, "error": "internal"})
         if u.path == "/api/roster":
             # 真实研究员名册：人设引自 doctrine 原文，战绩来自平仓账本与 playbookex
             try:
@@ -263,14 +264,14 @@ class H(http.server.BaseHTTPRequestHandler):
                 return self._send(200, real.roster(
                     with_series=(q.get("series") or ["0"])[0] == "1"))
             except Exception as e:
-                return self._send(200, {"ok": False, "error": str(e)})
+                return self._send(200, {"ok": False, "error": "internal"})
         if u.path == "/api/finance":
             # 真实薪资：扫 ~/.claude/projects 的 usage，按项目目录归属到研究员
             try:
                 import real
                 return self._send(200, real.finance())
             except Exception as e:
-                return self._send(200, {"ok": False, "error": str(e)})
+                return self._send(200, {"ok": False, "error": "internal"})
         if u.path == "/api/wiki_page":
             # wiki 原文属机密层：整页内容 + 缺口一手证据
             try:
@@ -280,7 +281,7 @@ class H(http.server.BaseHTTPRequestHandler):
                     return self._send(400, {"ok": False, "error": "缺 slug"})
                 return self._send(200, kbreal.wiki_page(slug))
             except Exception as e:
-                return self._send(200, {"ok": False, "error": str(e)})
+                return self._send(200, {"ok": False, "error": "internal"})
         if u.path in ("/api/archive", "/api/archive_read"):
             # 档案室：各策略每日留痕的索引与原文
             try:
@@ -289,7 +290,7 @@ class H(http.server.BaseHTTPRequestHandler):
                     return self._send(200, arch.day((q.get("date") or [""])[0]))
                 return self._send(200, arch.read((q.get("path") or [""])[0]))
             except Exception as e:
-                return self._send(200, {"ok": False, "error": str(e)})
+                return self._send(200, {"ok": False, "error": "internal"})
         if u.path == "/api/rumors":
             # 饭局/茶室的素材：缺口账本里「市场怎么讲」对「一手证据」的真实对立
             try:
@@ -304,7 +305,7 @@ class H(http.server.BaseHTTPRequestHandler):
                 return self._send(200, {"ok": True, "total": len(rows), "rows": rows[:60],
                                         "file": "wiki/_RESOLVED_GAPS.json"})
             except Exception as e:
-                return self._send(200, {"ok": False, "error": str(e)})
+                return self._send(200, {"ok": False, "error": "internal"})
         if u.path in ("/api/npc", "/api/npc_one"):
             # NPC：化名角色 + 真实公开发言蒸馏（引述带日期与出处，>90 天不进对话池）
             try:
@@ -314,14 +315,14 @@ class H(http.server.BaseHTTPRequestHandler):
                 nid = (q.get("id") or [""])[0]
                 return self._send(200, npcmod.npc(nid))
             except Exception as e:
-                return self._send(200, {"ok": False, "error": str(e)})
+                return self._send(200, {"ok": False, "error": "internal"})
         if u.path == "/api/session":
             # 晨会 / 复盘：各策略观点原文汇总 + 可并排比的分歧
             try:
                 import views
                 return self._send(200, views.session((q.get("which") or ["morning"])[0]))
             except Exception as e:
-                return self._send(200, {"ok": False, "error": str(e)})
+                return self._send(200, {"ok": False, "error": "internal"})
         if u.path in ("/api/inbox", "/api/workbench"):
             # 老板选题队列 + 研究工作台（本机已有什么 / 该问什么 / 下一步跑什么）
             try:
@@ -339,28 +340,28 @@ class H(http.server.BaseHTTPRequestHandler):
                     return self._send(400, {"ok": False, "error": "缺 id 或 q"})
                 return self._send(200, research.workbench(text, sid))
             except Exception as e:
-                return self._send(200, {"ok": False, "error": str(e)})
+                return self._send(200, {"ok": False, "error": "internal"})
         if u.path == "/api/pipeline":
             # 研究流水线：真实课题生命周期（信念账本 + 待入库 + 缺口 + 今日锁仓 + 在仓）
             try:
                 import pipeline
                 return self._send(200, pipeline.pipeline())
             except Exception as e:
-                return self._send(200, {"ok": False, "error": str(e)})
+                return self._send(200, {"ok": False, "error": "internal"})
         if u.path == "/api/desk":
             # 交易台：跨策略风险报表 + 真实平仓流水 + R1-R10 风控基线
             try:
                 import deskreal
                 return self._send(200, deskreal.desk())
             except Exception as e:
-                return self._send(200, {"ok": False, "error": str(e)})
+                return self._send(200, {"ok": False, "error": "internal"})
         if u.path == "/api/briefing":
             # 日报 = summary 当日报告原文 + 各账本真实待办
             try:
                 import briefing
                 return self._send(200, briefing.briefing())
             except Exception as e:
-                return self._send(200, {"ok": False, "error": str(e)})
+                return self._send(200, {"ok": False, "error": "internal"})
         if u.path == "/api/buildings":
             inv = {}
             for d in DOCS.values():
@@ -422,7 +423,7 @@ class H(http.server.BaseHTTPRequestHandler):
                 return self._send(200, research.set_status(
                     body.get("id"), body.get("status") or "done"))
             except Exception as e:
-                return self._send(200, {"ok": False, "error": str(e)})
+                return self._send(200, {"ok": False, "error": "internal"})
         if u.path == "/api/carry":
             n = int(self.headers.get("Content-Length", 0))
             body = json.loads(self.rfile.read(n) or b"{}")

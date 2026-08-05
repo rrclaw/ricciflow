@@ -73,3 +73,11 @@ document.addEventListener('click', e=>{
   if(d){ e.stopPropagation(); showTip('<b>方法论</b><br>' + d.dataset.info, e);
     setTimeout(hideTip, 4000); }
 });
+
+/* HTML 转义 —— 所有来自桥(KB/wiki/web搜索)的文本插进 innerHTML 前必须过这一道。
+   桥吃的是外部文档, 一个带 <img onerror=...> 的标题就是存储型 XSS。
+   脱敏(redact)管的是真名, 不管 HTML —— 两道闸各干各的。 */
+function esc(t){
+  return String(t == null ? '' : t).replace(/[<>&"]/g,
+    c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+}
