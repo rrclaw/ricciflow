@@ -20,12 +20,15 @@
 只读 KB；唯一写入是自己的 inbox.jsonl。
 """
 import json
+import os
 import re
 import time
 from pathlib import Path
 
 HERE = Path(__file__).parent
-INBOX = HERE / "inbox.jsonl"
+# 队列文件可被环境变量改到别处 —— 测试必须写到临时文件，
+# 不能把测试投稿灌进老板真实的选题队列（已经犯过一次）。
+INBOX = Path(os.environ.get("RICCIFLOW_INBOX") or (HERE / "inbox.jsonl"))
 KB = Path.home() / "knowledge" / "knowledge"
 
 _STOP = {"的", "了", "和", "与", "或者", "以及", "如何", "怎么", "请问", "我们", "他们",
@@ -136,6 +139,12 @@ def submit(text, who=None, tag=""):
     text = str(text or "").strip()
     if len(text) < 8:
         return {"ok": False, "error": "太短了，至少写 8 个字 —— 这条是要进队列的，不是随手一按"}
+    # 同样的话题重复投 = 队列里出现几个一模一样的框。指回原来那条，别再开一张。
+    norm = re.sub(r"\s+", "", text)
+    for r in inbox(9999)["rows"]:
+        if re.sub(r"\s+", "", r.get("text") or "") == norm:
+            return {"ok": False, "dup": r["id"], "at": r["at"],
+                    "error": f"这条 {r['at']} 已经投过了（{r['id']}），没有重复开票"}
     row = {"id": "sub_" + hex(abs(hash(text + str(time.time()))))[2:10],
            "at": time.strftime("%Y-%m-%d %H:%M"), "date": time.strftime("%Y-%m-%d"),
            "text": text[:2000], "who": who or [], "tag": tag or "",
@@ -146,16 +155,22 @@ def submit(text, who=None, tag=""):
 
 
 def inbox(limit=50):
-    rows = []
+    """append-only 文件按 id 收敛到最后一条 —— 改过状态的那条会写两遍，
+    不收敛的话同一个话题会在流水线里出现两个一模一样的框。"""
+    latest = {}
+    order = []
     if INBOX.exists():
         for line in INBOX.read_text(errors="ignore").splitlines():
             if not line.strip():
                 continue
             try:
-                rows.append(json.loads(line))
+                d = json.loads(line)
             except Exception:
                 continue
-    rows.reverse()
+            if d["id"] not in latest:
+                order.append(d["id"])
+            latest[d["id"]] = d            # 后写的覆盖先写的
+    rows = [latest[i] for i in reversed(order)]
     return {"ok": True, "n": len(rows), "rows": rows[:limit], "file": str(INBOX)}
 
 

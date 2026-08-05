@@ -108,6 +108,10 @@ function bindSubmit(){
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({text, who, tag}), signal:AbortSignal.timeout(20000)})).json();
     }catch(e){ d = {ok:false, error:String(e.message || e)}; }
+    if(d && d.dup){
+      toast(d.error);
+      return openWorkbench(d.dup);      /* 已经投过了，直接把那条打开 */
+    }
     if(!d || !d.ok) return toast('没投进去：' + ((d && d.error) || '桥不通'));
     $('#subText').value = '';
     toast('已进选题队列 —— 正在给你翻本机已有的料');
