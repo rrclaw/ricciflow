@@ -17,6 +17,7 @@ import json
 import os
 import subprocess
 import sys
+import signal
 import time
 import warnings
 
@@ -26,18 +27,55 @@ _CACHE = {}
 _TTL = 600
 
 
+
+# 🔴 2026-08-05 实战教训：两个进程各占一个满核空转了 6 天 8 小时才被发现。
+# 根因不是网络卡住，是 **baostock 的 bs.login() 在自己内部空转**（实测：0.2s 走到
+# login，之后永不返回，CPU 100%）。进程内关不住它——socket.setdefaulttimeout 试过，
+# 无效；Python 也杀不掉一个不配合的线程。**唯一可靠的containment 是进程级**，
+# 也就是本文件已有的 _run_child(子进程 + 超时 + 杀进程组)。
+#
+# 那次事故的真正触发方式是：有人 `import freeapi` 后**直接调探针函数**（或调 probe()
+# 之外的内部函数），绕过了子进程那条路，于是超时保护根本不生效，父进程一死就成孤儿。
+# 所以把危险路径堵死，而不是写句注释提醒自己别走。
+_IN_CHILD = False   # 只有 --one 子进程入口会置 True
+
+
+def _child_only(name):
+    """探针函数只准在 --one 子进程里执行；进程内直调一律拒绝。"""
+    if not _IN_CHILD:
+        raise RuntimeError(
+            f"{name} 只能通过 probe('{name.strip(chr(95))}') 走子进程调用。"
+            "直接在进程内调用没有超时保护，baostock 一类的库会把你的进程挂死"
+            "(2026-08-05 事故: 满核空转 6 天)。")
+
+
 # ---------------------------------------------------------------- 各家探针
 def _baostock():
+    _child_only("_baostock")
     import baostock as bs
     lg = bs.login()
     rs = bs.query_history_k_data_plus(
         "sh.600519", "date,close", frequency="d",
         start_date=time.strftime("%Y-%m-%d", time.localtime(time.time() - 20 * 86400)),
         end_date=time.strftime("%Y-%m-%d"))
-    rows = []
+    # 🔴 死循环闸（2026-08-05 补，实战教训）：baostock 的 rs.next() 在连接掉线/服务端
+    # 异常时会一直返回 True 而**不推进游标**，这个 while 就变成无 sleep 的满速空转。
+    # （注：6 天那次事故的根因是上面的 bs.login()，不是这个循环；这道闸是独立的防御，
+    #   因为 rs.next() 不推进游标这件事本身也确实会空转。）
+    # 行数上限比时间更硬：只取 20 天日线，正常 15 根左右，过 5000 一定是游标坏了。
+    MAX_ROWS, DEADLINE = 5000, time.time() + 20
+    rows, stalled = [], None
     while rs.error_code == "0" and rs.next():
         rows.append(rs.get_row_data())
+        if len(rows) > MAX_ROWS:
+            stalled = f"游标不推进（已读 {len(rows)} 行，20 天日线不可能这么多）"
+            break
+        if time.time() > DEADLINE:
+            stalled = f"读取超 20s（已读 {len(rows)} 行）"
+            break
     bs.logout()
+    if stalled:
+        return {"ok": False, "error": f"baostock 返回异常：{stalled}"}
     if not rows:
         return {"ok": False, "error": f"登录 {lg.error_code}，但取不到任何 K 线（数据可能已停更）"}
     return {"ok": True, "items": [{"topic": f"贵州茅台 {r[0]}", "date": r[0], "close": r[1]} for r in rows[-5:]],
@@ -45,6 +83,7 @@ def _baostock():
 
 
 def _pywencai():
+    _child_only("_pywencai")
     import pywencai
     d = pywencai.get(query="今日涨幅前5的股票", loop=True)
     if d is None:
@@ -63,6 +102,7 @@ TDX_HOSTS = [("119.147.212.81", 7709), ("123.125.108.90", 7709),
 
 
 def _pytdx():
+    _child_only("_pytdx")
     from pytdx.hq import TdxHq_API
     api = TdxHq_API(raise_exception=True)
     tried = []
@@ -81,6 +121,7 @@ def _pytdx():
 
 
 def _efinance():
+    _child_only("_efinance")
     import efinance as ef
     df = ef.stock.get_quote_history(
         "600519",
@@ -121,11 +162,20 @@ def probe(sid, force=False):
 def _run_child(sid, secs):
     """子进程里跑一个探针，只信它最后一行的 JSON。超时就整棵进程树砍掉。"""
     cmd = [sys.executable, os.path.abspath(__file__), "--one", sid]
+    # start_new_session=True 把子进程放进独立进程组, 就是为了能整组砍。
+    # 但 subprocess.run 超时时只 kill 直接子进程, 孙进程会活下来变孤儿 —— 得自己 killpg。
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            text=True, start_new_session=True)
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=secs,
-                           start_new_session=True)
+        out, err = proc.communicate(timeout=secs)
+        r = subprocess.CompletedProcess(cmd, proc.returncode, out, err)
     except subprocess.TimeoutExpired:
-        return {"ok": False, "error": f"超时（{secs}s 没回），已终止"}
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            proc.kill()
+        proc.wait(timeout=5)
+        return {"ok": False, "error": f"超时（{secs}s 没回），已连同子孙进程一起终止"}
     except Exception as e:
         return {"ok": False, "error": f"{type(e).__name__}: {str(e)[:160]}"}
     for line in reversed((r.stdout or "").strip().splitlines()):
@@ -149,6 +199,8 @@ def probe_all(force=False):
 
 def _main_one(sid):
     """子进程入口：把结果作为最后一行 JSON 打出来，然后硬退（库的线程会拖住 atexit）。"""
+    global _IN_CHILD
+    _IN_CHILD = True          # ← 唯一放行点: 只有这条路有子进程超时兜底
     fn = PROBES[sid][0]
     try:
         out = fn()
